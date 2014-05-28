@@ -162,7 +162,7 @@ class BusyboxTest {
     //    }
 
     def genAllCombinations(kconfigFile: String, workingDir: File, fm: KConfigModel) {
-        val configs = explodeConfigs(fm.getBooleanItems.toList.sorted)
+        val configs = explodeConfigs(cleanAssignment(fm.getBooleanItems.toList.sorted))
 
         val result: List[(String, Boolean /*expectedValid*/ , Boolean /*correctResult*/ )] = for (config <- configs) yield {
             val partialAssignment = getPartialAssignment(fm.getBooleanItems, config.toSet)
@@ -189,7 +189,7 @@ class BusyboxTest {
 
     def genAllCombinationsFromPartial(kconfigFile: String, workingDir: File, fm: KConfigModel, featureSet: Set[String]) {
 
-        val configs = explodeConfigs(featureSet)
+        val configs = explodeConfigs(cleanAssignment(featureSet))
 
         for (config <- configs) {
             val partialAssignment = getPartialAssignment(featureSet, config.toSet)
@@ -274,6 +274,8 @@ class BusyboxTest {
     //    }
 
     private def cleanAssignment(l: Set[String]): Set[String] =
+        l.filterNot(_.startsWith("CHOICE_"))
+    private def cleanAssignment(l: List[String]): List[String] =
         l.filterNot(_.startsWith("CHOICE_"))
 
 

@@ -33,7 +33,7 @@ class KConfigModel() {
         fm
     }
     def getItems = items.keys.toSet
-    def getBooleanItems = items.values.filter(_._type=="boolean").map(_.name).toSet
+    def getBooleanItems = items.values.filter(_._type=="boolean").filterNot(_.name startsWith "CHOICE_").map(_.name).toSet
 
     def getNonBooleanDefaults: Map[Item, List[(String, Expr)]] =
         items.values.filter(Set("integer","hex","string") contains _._type).map(i => (i -> i.default)).toMap

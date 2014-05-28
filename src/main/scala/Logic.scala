@@ -19,6 +19,9 @@ abstract class Expr {
     def kexpr: String
 
     def eval(assignedValues: Set[String]): Boolean
+
+    //get expression in three-value logic
+    def fexpr3: FeatureExpr
 }
 
 case class Name(n: Item) extends Expr {
@@ -43,10 +46,27 @@ case class Not(a: Expr) extends Expr {
     def fexpr: FeatureExpr = a.fexpr.not
     def kexpr = "!("+a.kexpr +")"
     def eval(v: Set[String]) = !a.eval(v)
+
+    def fexpr3: FeatureExpr = FeatureExprFactory.True
 }
 
 case class ETrue() extends Expr {
     def fexpr: FeatureExpr = FeatureExprFactory.True
     def kexpr = "y"
     def eval(v: Set[String]) = true
+
+    def fexpr3: FeatureExpr = FeatureExprFactory.True
+}
+//
+//case class EModule() extends Expr {
+//    def fexpr: FeatureExpr = FeatureExprFactory.True
+//    def kexpr = "m"
+//    def eval(v: Set[String]) = true
+//
+//    //get expression in three-value logic
+//    def fexpr3(_this: Item): FeatureExpr = _this.modulefexpr
+//}
+
+object Implies {
+    def apply(a: Expr, b: Expr) = Or(Not(a),b)
 }

@@ -33,11 +33,34 @@ class KConfigModel() {
         fm
     }
     def getItems = items.keys.toSet
-    def getBooleanItems = items.values.filter(_._type=="boolean").filterNot(_.name startsWith "CHOICE_").map(_.name).toSet
+    def getBooleanSymbols: Set[String] = {
+        val i = items.values.filterNot(_.name startsWith "CHOICE_")
+        val boolitems = i.filter(_._type == "boolean")
+        val triitems = i.filter(_._type == "tristate")
+        (boolitems.map(_.name) ++ triitems.map(_.name) ++ triitems.map(_.name + "_MODULE")).toSet
+    }
 
     def getNonBooleanDefaults: Map[Item, List[(String, Expr)]] =
-        items.values.filter(Set("integer","hex","string") contains _._type).map(i => (i -> i.default)).toMap
+        items.values.filter(Set("integer", "hex", "string") contains _._type).map(i => (i -> i.default)).toMap
 }
+
+/**
+ * tristate to CONFIG_x translation:
+ *
+ * x=y
+ * => #define CONFIG_x
+ * => #undef CONFIG_x_MODULE
+ *
+ * x=m
+ * => #undef CONFIG_x
+ * => #define CONFIG_x_MODULE
+ *
+ * x=n
+ * => #undef CONFIG_x
+ * => #undef CONFIG_x_MODULE
+ *
+ * @param name
+ */
 
 case class Item(val name: String) {
     var _type: String = "boolean"
@@ -61,11 +84,11 @@ case class Item(val name: String) {
     def setSelectedBy(item: Item, condition: Expr = ETrue()) {
         this.selectedBy = (item, condition) :: this.selectedBy
     }
-    def getConstraints: List[FeatureExpr] = if (_type != "boolean") Nil
-    else {
+    private val MODULES = createDefinedExternal("MODULES")
+    def getConstraints: List[FeatureExpr] = if (Set("boolean", "tristate") contains _type) {
         var result: List[FeatureExpr] = Nil
         if (depends.isDefined)
-            result = (this.fexpr implies depends.get.fexpr) :: result
+            result = Implies(this,depends.get).fexpr :: result
 
         if (!hasPrompt) {
             val isDefault = getDefaultIsTrue().fexpr
@@ -79,6 +102,10 @@ case class Item(val name: String) {
             result = (isDefault implies this.fexpr) :: result
         }
 
+        if (isTristate) {
+            result = (this.fexpr and this.modulefexpr).not :: result
+            result ::= (this.modulefexpr implies MODULES)
+        }
 
 
         //selected by any select-dependencies
@@ -87,7 +114,7 @@ case class Item(val name: String) {
             result = ((sel._1.fexpr and sel._2.fexpr) implies this.fexpr) :: result
 
         result
-    }
+    } else Nil
 
     def getDefaultIsTrue(): Expr = {
         var result: Expr = Not(ETrue())
@@ -103,16 +130,19 @@ case class Item(val name: String) {
 
     def default: List[(String, Expr)] = {
         var result = _default
-//        if (_type == "integer" && hasPrompt)
-//            result = ("0", ETrue()) :: result
-//        if (_type == "hex" && hasPrompt)
-//            result = ("0x0", ETrue()) :: result
-//        if (_type == "string" && hasPrompt)
-//            result = ("", ETrue()) :: result
+        //        if (_type == "integer" && hasPrompt)
+        //            result = ("0", ETrue()) :: result
+        //        if (_type == "hex" && hasPrompt)
+        //            result = ("0x0", ETrue()) :: result
+        //        if (_type == "string" && hasPrompt)
+        //            result = ("", ETrue()) :: result
         if (_type == "string")
-            result = result.map(v=>("\""+v._1+"\"",v._2))
+            result = result.map(v => ("\"" + v._1 + "\"", v._2))
         result
     }
+    def isTristate = _type == "tristate"
+    def modulename = this.name + "_MODULE"
+    def modulefexpr = FeatureExprFactory.createDefinedExternal(modulename)
 
 }
 

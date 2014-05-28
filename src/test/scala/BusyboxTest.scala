@@ -82,6 +82,12 @@ class BusyboxTest {
     @Test def testString() {
         checkTestModelBruteForce("src/test/resources/string.config")
     }
+    @Test def testTri() {
+        checkTestModelBruteForce("src/test/resources/tri.config")
+    }
+    @Test def testTriDep() {
+        checkTestModelBruteForce("src/test/resources/tridep.config")
+    }
 
     //    private def printAllConfig(kconfigFile: String) {
     //        val workingDir = new File(".")
@@ -162,13 +168,13 @@ class BusyboxTest {
     //    }
 
     def genAllCombinations(kconfigFile: String, workingDir: File, fm: KConfigModel) {
-        val configs = explodeConfigs(cleanAssignment(fm.getBooleanItems.toList.sorted))
+        val configs = explodeConfigs(cleanAssignment(fm.getBooleanSymbols.toList.sorted))
 
         val result: List[(String, Boolean /*expectedValid*/ , Boolean /*correctResult*/ )] = for (config <- configs) yield {
-            val partialAssignment = getPartialAssignment(fm.getBooleanItems, config.toSet)
+            val partialAssignment = getPartialAssignment(fm.getBooleanSymbols, config.toSet)
             val isSat = (fm.getFM and partialAssignment).isSatisfiable
             val nonBoolean = getNonBoolean(fm, config.toSet)
-            val isValid = isValidConfig(kconfigFile, workingDir, config.toSet, fm.getBooleanItems -- config, nonBoolean)
+            val isValid = isValidConfig(kconfigFile, workingDir, config.toSet, fm.getBooleanSymbols -- config, nonBoolean)
             ((config.sorted ++ nonBoolean.map(v => v._1 + "=" + v._2)).mkString(", "), isSat, isValid == isSat)
         }
 
@@ -201,7 +207,7 @@ class BusyboxTest {
             }
             val nonBoolean = getNonBoolean(fm, completedConf)
 
-            assert(isValidConfig(kconfigFile, workingDir, completedConf, fm.getBooleanItems -- completedConf, nonBoolean) == isSat, "expected but did not find " + isSat)
+            assert(isValidConfig(kconfigFile, workingDir, completedConf, fm.getBooleanSymbols -- completedConf, nonBoolean) == isSat, "expected but did not find " + isSat)
         }
 
 
@@ -236,7 +242,7 @@ class BusyboxTest {
     }
 
     def genValidAssignment(kconfigFile: String, workingDir: File, fm: KConfigModel, partialAssignment: FeatureExpr): Set[String] = {
-        val r = (fm.getFM and partialAssignment).getSatisfiableAssignment(null, fm.getBooleanItems.map(createDefinedExternal(_)), true)
+        val r = (fm.getFM and partialAssignment).getSatisfiableAssignment(null, fm.getBooleanSymbols.map(createDefinedExternal(_)), true)
         cleanAssignment(r.get._1.map(_.feature).toSet)
     }
 
@@ -244,7 +250,7 @@ class BusyboxTest {
         //get any assignment for the rest and overwrite the given variables
         //this will not always find out whether the assignment is actually permissable
         // (it may be permissable with another base assignment for the other options), but we can try
-        val r = fm.getFM.getSatisfiableAssignment(null, fm.getBooleanItems.map(createDefinedExternal(_)), true)
+        val r = fm.getFM.getSatisfiableAssignment(null, fm.getBooleanSymbols.map(createDefinedExternal(_)), true)
 
         assert(r.isDefined, "SAT solver did not find assignment at all")
 
@@ -299,9 +305,13 @@ class BusyboxTest {
         val configFile = new File(workingDir, ".config")
         val writer = new FileWriter(configFile)
         for (f <- selected)
-            writer.write("CONFIG_%s=y\n".format(f))
+            if (f endsWith "_MODULE")
+                writer.write("CONFIG_%s=m\n".format(f.dropRight(7)))
+        else
+                writer.write("CONFIG_%s=y\n".format(f))
         for (f <- deselected)
-            writer.write("# CONFIG_%s is not set\n".format(f))
+            if (!(f endsWith "_MODULE") && !selected.contains(f+"_MODULE"))
+                writer.write("# CONFIG_%s is not set\n".format(f))
         for ((option, value) <- nonBoolean)
             writer.write("CONFIG_%s=%s\n".format(option, value))
         writer.close()
@@ -311,12 +321,14 @@ class BusyboxTest {
         var setConfigs: List[String] = Nil
         var setNonBoolean: Map[String, String] = Map()
         val EnabledConfig = "^CONFIG_([a-zA-Z0-9_]+)=y$".r
+        val ModuleConfig = "^CONFIG_([a-zA-Z0-9_]+)=m$".r
         val NonBoolean = "^CONFIG_([a-zA-Z0-9_]+)=(\\d+)$".r
         val NonBooleanHex = "^CONFIG_([a-zA-Z0-9_]+)=(0x\\d+)$".r
         val NonBooleanStr = "^CONFIG_([a-zA-Z0-9_]+)=(\".*\")$".r
         for (l <- io.Source.fromFile(configFile).getLines()) {
             l match {
                 case EnabledConfig(c) => setConfigs ::= c
+                case ModuleConfig(c) => setConfigs ::= c+"_MODULE"
                 case NonBoolean(c, v) => setNonBoolean += (c -> v)
                 case NonBooleanHex(c, v) => setNonBoolean += (c -> v)
                 case NonBooleanStr(c, v) => setNonBoolean += (c -> v)

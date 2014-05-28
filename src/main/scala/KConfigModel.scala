@@ -20,26 +20,29 @@ class KConfigModel() {
 
     def getConstraints: List[FeatureExpr] = (items.values.flatMap(_.getConstraints) ++ choices.values.flatMap(_.getConstraints)).toList
     def getFM: FeatureExpr = {
-//        var f: FeatureExpr = True
-//        var d: String = ""
-//        for (c <- getConstraints) {
-//            assert((f and c).isSatisfiable(), "unsatisfiable because " + c + ", before \n" + d)
-//            d = d + "\n"+c
-//            f = f and c
-//        }
+        //        var f: FeatureExpr = True
+        //        var d: String = ""
+        //        for (c <- getConstraints) {
+        //            assert((f and c).isSatisfiable(), "unsatisfiable because " + c + ", before \n" + d)
+        //            d = d + "\n"+c
+        //            f = f and c
+        //        }
 
         val fm = getConstraints.foldLeft(True)(_ and _)
         assert(fm.isSatisfiable, "model is not satisfiable")
         fm
     }
     def getItems = items.keys.toSet
+    def getBooleanItems = items.values.filter(_._type=="boolean").map(_.name).toSet
 
+    def getNonBooleanDefaults: Map[Item, List[(String, Expr)]] =
+        items.values.filter(Set("integer","hex","string") contains _._type).map(i => (i -> i.default)).toMap
 }
 
 case class Item(val name: String) {
     var _type: String = "boolean"
     var hasPrompt: Boolean = false
-    var default: List[(String, Expr)] = Nil
+    private var _default: List[(String, Expr)] = Nil
     var depends: Option[Expr] = None
     var selectedBy: List[(Item, Expr)] = Nil
     val fexpr = FeatureExprFactory.createDefinedExternal(name)
@@ -50,7 +53,7 @@ case class Item(val name: String) {
         this.hasPrompt = p == "1"
     }
     def setDefault(defaultValue: String, condition: Expr) {
-        this.default = (defaultValue, condition) :: this.default
+        this._default = (defaultValue, condition) :: this._default
     }
     def setDepends(s: Expr) {
         this.depends = Some(s)
@@ -89,12 +92,25 @@ case class Item(val name: String) {
     def getDefaultIsTrue(): Expr = {
         var result: Expr = Not(ETrue())
         var covered: Expr = Not(ETrue())
-        for ((v, expr) <- default.reverse) {
-            if (v == "\"y\"") {
+        for ((v, expr) <- _default.reverse) {
+            if (v == "y") {
                 result = Or(result, And(expr, Not(covered)))
             }
             covered = Or(covered, expr)
         }
+        result
+    }
+
+    def default: List[(String, Expr)] = {
+        var result = _default
+//        if (_type == "integer" && hasPrompt)
+//            result = ("0", ETrue()) :: result
+//        if (_type == "hex" && hasPrompt)
+//            result = ("0x0", ETrue()) :: result
+//        if (_type == "string" && hasPrompt)
+//            result = ("", ETrue()) :: result
+        if (_type == "string")
+            result = result.map(v=>("\""+v._1+"\"",v._2))
         result
     }
 

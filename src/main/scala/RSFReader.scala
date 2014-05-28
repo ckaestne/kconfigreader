@@ -32,8 +32,8 @@ class RSFReader {
                 model.getItem(itemName).setPrompt(substrs(2))
             } else
             if (command == "Default") {
-                //Depends <CurrentItem> <DefaultValue> "<Condition>"
-                val defaultValue = substrs(2)
+                //Depends <CurrentItem> "<DefaultValue>" "<Condition>"
+                val defaultValue = substrs(2).drop(1).dropRight(1)
                 val condition = if (substrs(3) == "\"y\"") ETrue() else parser.parseExpr(substrs(3).drop(1).dropRight(1))
                 model.getItem(itemName).setDefault(defaultValue, condition)
             } else

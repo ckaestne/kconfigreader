@@ -12,7 +12,7 @@ import scala.sys.process.Process
  */
 class BusyboxTest {
 
-    val dumpconfTool = "/usr/lib/undertaker/dumpconf %s > %s"
+    val dumpconfTool = "/usr0/home/ckaestne/work/TypeChef/undertaker/scripts/kconfig/dumpconf %s > %s"
     val linuxTreeRoot = "/usr0/home/ckaestne/work/TypeChef/LinuxAnalysis/gitlinux/"
     val configTool = linuxTreeRoot + "scripts/kconfig/conf --olddefconfig %s"
 
@@ -24,7 +24,7 @@ class BusyboxTest {
         val model = getModel(workingDir, kconfigFile)
         genAllCombinationsFromPartial(kconfigFile, workingDir, model, Set("FEATURE_CHECK_UNICODE_IN_ENV", "UNICODE_SUPPORT", "UNICODE_USING_LOCALE"))
     }
-                                         d
+
 
     @Test def testMiniKConfig() {
         checkTestModelBruteForce("src/test/resources/mini.config")
@@ -66,18 +66,35 @@ class BusyboxTest {
         checkTestModelBruteForce("src/test/resources/choice.config")
     }
 
-//    private def printAllConfig(kconfigFile: String) {
-//        val workingDir = new File(".")
-//        val fm = getModel(workingDir, kconfigFile)
-//
-//        val configs = explodeConfigs(fm.getItems)
-//
-//        val results = for (config <- configs) yield
-//             isValidConfig(kconfigFile, workingDir, config.toSet, fm.getItems -- config)
-//
-//        println((configs zip results).map(l => l._1.mkString(", ") + " => " + l._2).mkString("\n"))
-//
-//    }
+    @Test
+    @Ignore def testRandomFiles() {
+        for (i <- 0 until 100)
+            checkTestModelBruteForce("src/test/resources/gen/randombool%02d.conf".format(i))
+    }
+
+    @Test def testInt() {
+        checkTestModelBruteForce("src/test/resources/int.config")
+    }
+
+    @Test def testHex() {
+        checkTestModelBruteForce("src/test/resources/hex.config")
+    }
+    @Test def testString() {
+        checkTestModelBruteForce("src/test/resources/string.config")
+    }
+
+    //    private def printAllConfig(kconfigFile: String) {
+    //        val workingDir = new File(".")
+    //        val fm = getModel(workingDir, kconfigFile)
+    //
+    //        val configs = explodeConfigs(fm.getItems)
+    //
+    //        val results = for (config <- configs) yield
+    //             isValidConfig(kconfigFile, workingDir, config.toSet, fm.getItems -- config)
+    //
+    //        println((configs zip results).map(l => l._1.mkString(", ") + " => " + l._2).mkString("\n"))
+    //
+    //    }
 
     /**
      * checks the read Kconfig abstraction against all configurations checked
@@ -145,13 +162,14 @@ class BusyboxTest {
     //    }
 
     def genAllCombinations(kconfigFile: String, workingDir: File, fm: KConfigModel) {
-        val configs = explodeConfigs(fm.getItems.toList.sorted)
+        val configs = explodeConfigs(fm.getBooleanItems.toList.sorted)
 
-        val result:List[(String, Boolean/*expectedValid*/, Boolean/*correctResult*/)] = for (config <- configs) yield {
-            val partialAssignment = getPartialAssignment(fm.getItems, config.toSet)
+        val result: List[(String, Boolean /*expectedValid*/ , Boolean /*correctResult*/ )] = for (config <- configs) yield {
+            val partialAssignment = getPartialAssignment(fm.getBooleanItems, config.toSet)
             val isSat = (fm.getFM and partialAssignment).isSatisfiable
-            val isValid = isValidConfig(kconfigFile, workingDir, config.toSet, fm.getItems -- config)
-            (config.sorted.mkString(", "),isSat,isValid== isSat)
+            val nonBoolean = getNonBoolean(fm, config.toSet)
+            val isValid = isValidConfig(kconfigFile, workingDir, config.toSet, fm.getBooleanItems -- config, nonBoolean)
+            ((config.sorted ++ nonBoolean.map(v => v._1 + "=" + v._2)).mkString(", "), isSat, isValid == isSat)
         }
 
         System.err.flush()
@@ -159,9 +177,9 @@ class BusyboxTest {
         println("!!!!!!!!!!!!!!!!!!")
         result.map(r =>
             if (r._3)
-                println(r._1+" => "+r._2)
+                println(r._1 + " => " + r._2)
             else
-                System.err.println(r._1+" => "+(!r._2)+" by executing kconfig (inferred model states "+r._2+")")
+                System.err.println(r._1 + " => " + (!r._2) + " by executing kconfig (inferred model states " + r._2 + ")")
         )
         System.err.flush()
         System.out.flush()
@@ -181,11 +199,25 @@ class BusyboxTest {
             } else {
                 genInvalidAssignment(kconfigFile, workingDir, fm, partialAssignment)
             }
+            val nonBoolean = getNonBoolean(fm, completedConf)
 
-            assert(isValidConfig(kconfigFile, workingDir, completedConf, fm.getItems -- completedConf) == isSat, "expected but did not find "+isSat)
+            assert(isValidConfig(kconfigFile, workingDir, completedConf, fm.getBooleanItems -- completedConf, nonBoolean) == isSat, "expected but did not find " + isSat)
         }
 
 
+    }
+
+    def getNonBoolean(fm: KConfigModel, assignedValues: Set[String]): Map[String, String] = {
+        var result = Map[String, String]()
+        for ((item, defaults) <- fm.getNonBooleanDefaults) {
+
+            val default = defaults.filter(_._2.eval(assignedValues)).map(_._1).reverse.headOption
+
+
+            if (default.isDefined)
+                result += (item.name -> default.get)
+        }
+        result
     }
 
 
@@ -204,7 +236,7 @@ class BusyboxTest {
     }
 
     def genValidAssignment(kconfigFile: String, workingDir: File, fm: KConfigModel, partialAssignment: FeatureExpr): Set[String] = {
-        val r = (fm.getFM and partialAssignment).getSatisfiableAssignment(null, fm.getItems.map(createDefinedExternal(_)), true)
+        val r = (fm.getFM and partialAssignment).getSatisfiableAssignment(null, fm.getBooleanItems.map(createDefinedExternal(_)), true)
         cleanAssignment(r.get._1.map(_.feature).toSet)
     }
 
@@ -212,7 +244,7 @@ class BusyboxTest {
         //get any assignment for the rest and overwrite the given variables
         //this will not always find out whether the assignment is actually permissable
         // (it may be permissable with another base assignment for the other options), but we can try
-        val r = fm.getFM.getSatisfiableAssignment(null, fm.getItems.map(createDefinedExternal(_)), true)
+        val r = fm.getFM.getSatisfiableAssignment(null, fm.getBooleanItems.map(createDefinedExternal(_)), true)
 
         assert(r.isDefined, "SAT solver did not find assignment at all")
 
@@ -254,13 +286,13 @@ class BusyboxTest {
         }
 
 
-    def isValidConfig(kconfigFile: String, workingDir: File, selected: Set[String], deselected: Set[String]): Boolean =
-        isValidConfig_(kconfigFile, workingDir, cleanAssignment(selected), cleanAssignment(deselected))
+    def isValidConfig(kconfigFile: String, workingDir: File, selected: Set[String], deselected: Set[String], nonBoolean: Map[String, String]): Boolean =
+        isValidConfig_(kconfigFile, workingDir, cleanAssignment(selected), cleanAssignment(deselected), nonBoolean)
 
 
-    private def isValidConfig_(kconfigFile: String, workingDir: File, selected: Set[String], deselected: Set[String]): Boolean = {
+    private def isValidConfig_(kconfigFile: String, workingDir: File, selected: Set[String], deselected: Set[String], nonBoolean: Map[String, String]): Boolean = {
         println("=============")
-        println("checking config: " + selected.toList.sorted.mkString(", ")) //+ deselected.toList.sorted.map("!" + _).mkString(" (and ", ", ", ")"))
+        println("checking config: " + (selected.toList.sorted ++ nonBoolean.map(v => v._1 + "=" + v._2)).mkString(", ")) //+ deselected.toList.sorted.map("!" + _).mkString(" (and ", ", ", ")"))
 
         val configFile = new File(workingDir, ".config")
         val writer = new FileWriter(configFile)
@@ -268,17 +300,29 @@ class BusyboxTest {
             writer.write("CONFIG_%s=y\n".format(f))
         for (f <- deselected)
             writer.write("# CONFIG_%s is not set\n".format(f))
+        for ((option, value) <- nonBoolean)
+            writer.write("CONFIG_%s=%s\n".format(option, value))
         writer.close()
 
         println(Process(configTool.format(kconfigFile), workingDir).!!)
 
         var setConfigs: List[String] = Nil
+        var setNonBoolean: Map[String, String] = Map()
+        val EnabledConfig = "^CONFIG_([a-zA-Z0-9_]+)=y$".r
+        val NonBoolean = "^CONFIG_([a-zA-Z0-9_]+)=(\\d+)$".r
+        val NonBooleanHex = "^CONFIG_([a-zA-Z0-9_]+)=(0x\\d+)$".r
+        val NonBooleanStr = "^CONFIG_([a-zA-Z0-9_]+)=(\".*\")$".r
         for (l <- io.Source.fromFile(configFile).getLines()) {
-            if (l.startsWith("CONFIG_") && l.endsWith("=y"))
-                setConfigs ::= l.dropRight(2).drop(7)
+            l match {
+                case EnabledConfig(c) => setConfigs ::= c
+                case NonBoolean(c, v) => setNonBoolean += (c -> v)
+                case NonBooleanHex(c, v) => setNonBoolean += (c -> v)
+                case NonBooleanStr(c, v) => setNonBoolean += (c -> v)
+                case _ =>
+            }
         }
 
-        println("found config: " + setConfigs.mkString(", "))
+        println("found config: " + (setConfigs++setNonBoolean.map(v => v._1 + "=" + v._2)).mkString(", "))
 
         for (s <- selected)
             if (!setConfigs.contains(s)) {
@@ -292,10 +336,20 @@ class BusyboxTest {
                 println(msg)
                 return false
             }
+        for ((k, v) <- nonBoolean)
+            if (setNonBoolean.getOrElse(k, "<does not exist>") != v) {
+                val msg = "config changed nonboolean value %s from %s to %s ".format(k, v, setNonBoolean.getOrElse(k, "<does not exist>"))
+                println(msg)
+                return false
+            }
+        for ((k, v) <- setNonBoolean)
+            if (!nonBoolean.contains(k)) {
+                val msg = "config introduces additional nonboolean value %s=%s".format(k, v)
+                println(msg)
+                return false
+            }
 
         return true
     }
 
 }
-
-class KConfigException(msg: String) extends Exception(msg)

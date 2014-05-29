@@ -6,7 +6,7 @@ organization := "de.fosd.typechef"
 
 scalaVersion := "2.10.2"
 
-libraryDependencies += "de.fosd.typechef" % "frontend_2.10" % "0.3.6"
+libraryDependencies += "de.fosd.typechef" % "frontend_2.10" % "0.3.4"
 
 libraryDependencies +="junit" % "junit" % "4.8.2" % "test"
 

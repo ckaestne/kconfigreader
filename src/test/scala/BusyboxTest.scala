@@ -12,18 +12,18 @@ import scala.sys.process.Process
  */
 class BusyboxTest {
 
-    val dumpconfTool = "/usr0/home/ckaestne/work/TypeChef/undertaker/scripts/kconfig/dumpconf %s > %s"
-    val linuxTreeRoot = "/usr0/home/ckaestne/work/TypeChef/LinuxAnalysis/gitlinux/"
+    val dumpconfTool = "/usr/lib/undertaker/dumpconf %s > %s"
+    val linuxTreeRoot = "/home/energy/kernel/linux-3.11/"
     val configTool = linuxTreeRoot + "scripts/kconfig/conf --olddefconfig %s"
 
 
-    @Test
-    def testBusybox() {
-        val workingDir = new File("/usr0/home/ckaestne/work/TypeChef/BusyboxAnalysis/gitbusybox/")
-        val kconfigFile = "Config.in"
-        val model = getModel(workingDir, kconfigFile)
-        genAllCombinationsFromPartial(kconfigFile, workingDir, model, Set("FEATURE_CHECK_UNICODE_IN_ENV", "UNICODE_SUPPORT", "UNICODE_USING_LOCALE"))
-    }
+//    @Test
+//    def testBusybox() {
+//        val workingDir = new File("/usr0/home/ckaestne/work/TypeChef/BusyboxAnalysis/gitbusybox/")
+//        val kconfigFile = "Config.in"
+//        val model = getModel(workingDir, kconfigFile)
+//        genAllCombinationsFromPartial(kconfigFile, workingDir, model, Set("FEATURE_CHECK_UNICODE_IN_ENV", "UNICODE_SUPPORT", "UNICODE_USING_LOCALE"))
+//    }
 
 
     @Test def testMiniKConfig() {
@@ -72,14 +72,14 @@ class BusyboxTest {
             checkTestModelBruteForce("src/test/resources/gen/randombool%02d.conf".format(i))
     }
 
-    @Test def testInt() {
+    @Ignore@Test def testInt() {
         checkTestModelBruteForce("src/test/resources/int.config")
     }
 
-    @Test def testHex() {
+  @Ignore@Test def testHex() {
         checkTestModelBruteForce("src/test/resources/hex.config")
     }
-    @Test def testString() {
+  @Ignore@Test def testString() {
         checkTestModelBruteForce("src/test/resources/string.config")
     }
     @Test def testTri() {

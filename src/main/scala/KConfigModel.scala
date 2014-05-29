@@ -68,9 +68,11 @@ case class Item(val name: String) {
     private var _default: List[(String, Expr)] = Nil
     var depends: Option[Expr] = None
     var selectedBy: List[(Item, Expr)] = Nil
-    val fexpr = FeatureExprFactory.createDefinedExternal(name)
-    def setType(_type: String) {
+    lazy val fexpr_y = FeatureExprFactory.createDefinedExternal(name)
+    lazy val fexpr_both = if (isTristate) (fexpr_y or fexpr_m) else fexpr_y
+    def setType(_type: String) = {
         this._type = _type
+        this
     }
     def setPrompt(p: String) {
         this.hasPrompt = p == "1"
@@ -81,47 +83,74 @@ case class Item(val name: String) {
     def setDepends(s: Expr) {
         this.depends = Some(s)
     }
-    def setSelectedBy(item: Item, condition: Expr = ETrue()) {
+    def setSelectedBy(item: Item, condition: Expr = YTrue()) {
         this.selectedBy = (item, condition) :: this.selectedBy
     }
     private val MODULES = createDefinedExternal("MODULES")
     def getConstraints: List[FeatureExpr] = if (Set("boolean", "tristate") contains _type) {
         var result: List[FeatureExpr] = Nil
-        if (depends.isDefined)
-            result = Implies(this,depends.get).fexpr :: result
 
+        //dependencies
+        if (depends.isDefined) {
+            if (isTristate) {
+                result ::= this.fexpr_y implies depends.get.fexpr_y
+                result ::= this.fexpr_m implies depends.get.fexpr_both
+            } else
+                result ::= this.fexpr_y implies depends.get.fexpr_both
+        }
+
+        //invisible options
         if (!hasPrompt) {
-            val isDefault = getDefaultIsTrue().fexpr
+            val isDefault = getDefaultIsTrue()
+            println("y="+isDefault.fexpr_y+";m="+isDefault.fexpr_m+";both="+isDefault.fexpr_both)
 
             //if invisible and off by default, then can only be activated by selects
             // notDefault -> !this | dep1 | dep2 | ... | depn
-            result = (isDefault.not implies selectedBy.foldLeft(this.fexpr.not)((expr, sel) => (sel._1.fexpr and sel._2.fexpr) or expr)) :: result
+            //                        result = (isDefault.not implies selectedBy.foldLeft(this.fexpr.not)((expr, sel) => (sel._1.fexpr and sel._2.fexpr2) or expr)) :: result //TODO
+            if (isTristate) {
+                result ::= (isDefault.fexpr_y.not implies selectedBy.foldLeft(this.fexpr_y.not)((expr, sel) => (sel._1.fexpr_y and sel._2.fexpr_y) or expr))
+                result ::= (isDefault.fexpr_m.not implies selectedBy.foldLeft(this.fexpr_m.not)((expr, sel) => (sel._1.fexpr_m and sel._2.fexpr_both) or expr))
+            } else
+                result ::= (isDefault.fexpr_both.not implies selectedBy.foldLeft(this.fexpr_y.not)((expr, sel) => (sel._1.fexpr_both and sel._2.fexpr_both) or expr))
+
 
             //if invisible and on by default, then can only be deactivated by dependencies (== default conditions)
             // default -> this <=> defaultCondition
-            result = (isDefault implies this.fexpr) :: result
+            if (isTristate) {
+                result ::= (isDefault.fexpr_y implies this.fexpr_y)
+                result ::= (isDefault.fexpr_m implies this.fexpr_both)
+            } else
+                result ::= (isDefault.fexpr_both implies this.fexpr_y)
         }
 
         if (isTristate) {
-            result = (this.fexpr and this.modulefexpr).not :: result
-            result ::= (this.modulefexpr implies MODULES)
+            result ::= (this.fexpr_y and this.fexpr_m).not
+            result ::= (this.fexpr_m implies MODULES)
         }
 
 
         //selected by any select-dependencies
         // -> (dep1 | dep2 | ... | depn) -> this
-        for (sel <- selectedBy)
-            result = ((sel._1.fexpr and sel._2.fexpr) implies this.fexpr) :: result
+        for (sel <- selectedBy) {
+            //            if (isTristate) {
+            result ::= ((sel._1.fexpr_y and sel._2.fexpr_y) implies this.fexpr_y)
+            result ::= ((sel._1.fexpr_both and sel._2.fexpr_both) implies this.fexpr_both)
+            //            } else
+            //                result ::= ((sel._1.fexpr_both and sel._2.fexpr_both) implies this.fexpr_both)
+        }
 
         result
     } else Nil
 
     def getDefaultIsTrue(): Expr = {
-        var result: Expr = Not(ETrue())
-        var covered: Expr = Not(ETrue())
+        var result: Expr = Not(YTrue())
+        var covered: Expr = Not(YTrue())
         for ((v, expr) <- _default.reverse) {
             if (v == "y") {
-                result = Or(result, And(expr, Not(covered)))
+                result = Or(result, And(YTrue(), And(expr, Not(covered))))
+            }
+            if (v == "m") {
+                result = Or(result, And(MTrue(), And(expr, Not(covered)))) //TODO check
             }
             covered = Or(covered, expr)
         }
@@ -141,8 +170,8 @@ case class Item(val name: String) {
         result
     }
     def isTristate = _type == "tristate"
-    def modulename = this.name + "_MODULE"
-    def modulefexpr = FeatureExprFactory.createDefinedExternal(modulename)
+    lazy val modulename = this.name + "_MODULE"
+    lazy val fexpr_m = FeatureExprFactory.createDefinedExternal(modulename)
 
 }
 
@@ -167,12 +196,12 @@ case class Choice(val name: String) {
 
     def getConstraints: List[FeatureExpr] = {
         //choice -> at least one child //TODO unless optional
-        val oneChild = (this.fexpr implies (items.foldLeft(False)(_ or _.fexpr)))
+        val oneChild = (this.fexpr implies (items.foldLeft(False)(_ or _.fexpr_y)))
         //every option implies the choice
-        val implyParent = items.map(_.fexpr implies this.fexpr)
+        val implyParent = items.map(_.fexpr_y implies this.fexpr)
         //all options are mutually exclusive //TODO special for tristate
         val mutex =
-            for (a <- items.tails.take(items.size); b <- a.tail) yield (a.head.fexpr mex b.fexpr)
+            for (a <- items.tails.take(items.size); b <- a.tail) yield (a.head.fexpr_y mex b.fexpr_y)
         //this is mandatory
         val thisMandatory = if (required == "required") fexpr else False
         (thisMandatory :: oneChild :: implyParent) ++ mutex

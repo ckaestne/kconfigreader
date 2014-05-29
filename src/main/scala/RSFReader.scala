@@ -33,20 +33,22 @@ class RSFReader {
             } else
             if (command == "Default") {
                 //Depends <CurrentItem> "<DefaultValue>" "<Condition>"
-                val defaultValue = substrs(2).drop(1).dropRight(1)
-                val condition = if (substrs(3) == "\"y\"") ETrue() else parser.parseExpr(substrs(3).drop(1).dropRight(1))
+                var defaultValue = substrs(2).drop(1).dropRight(1)
+                val condition = parser.parseExpr(substrs(3).drop(1).dropRight(1))
                 model.getItem(itemName).setDefault(defaultValue, condition)
             } else
             if (command == "Depends") {
                 var str=substrs(2).drop(1).dropRight(1)
                 str = str.replace("<choice>.....","y")
                 str = str.replaceFirst("^CHOICE_\\d+","y")
+                if (str.endsWith(" && CHOICE_0"))
+                    str = str.dropRight(12)
                 model.getItem(itemName).setDepends(parser.parseExpr(str))
             } else
             if (command == "ItemSelects") {
                 //ItemSelects <CurrentItem> "<TargetItem>" "<Condition>"
                 val targetItem = model.getItem(substrs(2).drop(1).dropRight(1))
-                val condition = if (substrs(3) == "\"y\"") ETrue() else parser.parseExpr(substrs(3).drop(1).dropRight(1))
+                val condition = if (substrs(3) == "\"y\"") YTrue() else parser.parseExpr(substrs(3).drop(1).dropRight(1))
                 targetItem.setSelectedBy(model.getItem(itemName), condition)
             } else
             if (command == "Choice") {
@@ -120,7 +122,8 @@ class RSFReader {
                 //            ("0" | "false" | "False" | "FALSE") ^^ {
                 //                x => featureFactory.False
                 //            } |
-                "y" ^^ { _ => ETrue()} |
+                "y" ^^ { _ => YTrue()} |
+                "m" ^^ { _ => MTrue()} |
                 ID ^^ {
                     n =>
                         Name(fm.getItem(n))

@@ -11,16 +11,16 @@ class RSFReaderTest {
 
     @Test def testDefault1 {
         val m = Item("m")
-        m.setDefault("y", ETrue())
+        m.setDefault("y", YTrue())
 
-        assert(m.getDefaultIsTrue().fexpr equivalentTo True)
+        assert(m.getDefaultIsTrue().fexpr2 equivalentTo True)
     }
 
     @Test def testDefault2 {
         val m = Item("m")
-        m.setDefault("n", ETrue())
+        m.setDefault("n", YTrue())
 
-        assert(m.getDefaultIsTrue().fexpr equivalentTo False)
+        assert(m.getDefaultIsTrue().fexpr2 equivalentTo False)
     }
 
     val fa=createDefinedExternal("A")
@@ -32,7 +32,7 @@ class RSFReaderTest {
         val m = Item("m")
         m.setDefault("y", Name(Item("A")))
 
-        assert(m.getDefaultIsTrue().fexpr equivalentTo fa)
+        assert(m.getDefaultIsTrue().fexpr2 equivalentTo fa)
     }
 
     @Test def testDefault4 {
@@ -40,16 +40,16 @@ class RSFReaderTest {
         m.setDefault("y", Name(Item("A")))
         m.setDefault("n", Name(Item("B")))
 
-        assert(m.getDefaultIsTrue().fexpr equivalentTo fa)
+        assert(m.getDefaultIsTrue().fexpr2 equivalentTo fa)
     }
 
 
     @Test def testDefault5 {
         val m = Item("m")
         m.setDefault("y", Name(Item("A")))
-        m.setDefault("n",  ETrue())
+        m.setDefault("n",  YTrue())
 
-        assert(m.getDefaultIsTrue().fexpr equivalentTo fa)
+        assert(m.getDefaultIsTrue().fexpr2 equivalentTo fa)
     }
 
     @Test def testDefault6 {
@@ -58,16 +58,16 @@ class RSFReaderTest {
         m.setDefault("n", Name(Item("B")))
         m.setDefault("y", Name(Item("C")))
 
-        assert(m.getDefaultIsTrue().fexpr equivalentTo (fa or (fc andNot fb)))
+        assert(m.getDefaultIsTrue().fexpr2 equivalentTo (fa or (fc andNot fb)))
     }
 
 
     @Test def testDefault7 {
         val m = Item("m")
         m.setDefault("y", Name(Item("A")))
-        m.setDefault("n",  ETrue())
+        m.setDefault("n",  YTrue())
         m.setDefault("y", Name(Item("B")))
 
-        assert(m.getDefaultIsTrue().fexpr equivalentTo fa)
+        assert(m.getDefaultIsTrue().fexpr2 equivalentTo fa)
     }
 }

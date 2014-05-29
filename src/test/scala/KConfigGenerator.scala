@@ -36,7 +36,7 @@ object KConfigGenerator {
 
         def genRandomExpr(compl: Double): Expr = {
             if (rand.nextDouble() > compl)
-                return ETrue()
+                return YTrue()
 
             var result: Expr = Name(getRandomItem)
 
@@ -96,18 +96,18 @@ object KConfigGenerator {
                 stream.print(" \"prompt %s\"".format(item.name))
             stream.println("")
             //depends
-            if (item.depends.isDefined && item.depends.get != ETrue())
+            if (item.depends.isDefined && item.depends.get != YTrue())
                 stream.println("\tdepends on %s".format(item.depends.get.kexpr))
             //selected by, changed as selects
             for ((i, cond) <- item.selectedBy) {
                 stream.print("\tselect %s".format(i.name))
-                if (cond != ETrue())
+                if (cond != YTrue())
                     stream.print(" if %s".format(cond.kexpr))
                 stream.println("")
             }
             for ((v, cond) <- item.default) {
                 stream.print("\tdefault %s".format(v))
-                if (cond != ETrue())
+                if (cond != YTrue())
                     stream.print(" if %s".format(cond.kexpr))
                 stream.println("")
             }

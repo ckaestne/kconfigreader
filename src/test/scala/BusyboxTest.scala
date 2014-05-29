@@ -88,7 +88,63 @@ class BusyboxTest {
     @Test def testTriDep() {
         checkTestModelBruteForce("src/test/resources/tridep.config")
     }
+    @Test def testTri2Dep() {
+        checkTestModelBruteForce("src/test/resources/tridep2.config")
+    }
+    @Test def testTri3Dep() {
+        checkTestModelBruteForce("src/test/resources/tridep3.config")
+    }
+    @Test def testTriSel() {
+        checkTestModelBruteForce("src/test/resources/trisel.config")
+    }
+    @Test def testTriSel2() {
+        checkTestModelBruteForce("src/test/resources/trisel2.config")
+    }
+    @Test def testTriSel3() {
+        checkTestModelBruteForce("src/test/resources/trisel3.config")
+    }
+    @Test def testTri4Dep() {
+        checkTestModelBruteForce("src/test/resources/tridep4.config")
+    }
+    @Test def testTri5Dep() {
+        checkTestModelBruteForce("src/test/resources/tridep5.config")
+    }
+    @Test def testTriSel4() {
+        checkTestModelBruteForce("src/test/resources/trisel4.config")
+    }
 
+    @Test def testTriHidden() {
+        checkTestModelBruteForce("src/test/resources/trihidden.config")
+    }
+    @Test def testTriHidden2() {
+        checkTestModelBruteForce("src/test/resources/trihidden2.config")
+    }
+    @Test def testTriHidden3() {
+        checkTestModelBruteForce("src/test/resources/trihidden3.config")
+    }
+    @Test def testTriHidden4() {
+        checkTestModelBruteForce("src/test/resources/trihidden4.config")
+    }
+
+
+    @Test def testTriSelHiddenKConfig() {
+        checkTestModelBruteForce("src/test/resources/triselhidden.config")
+    }
+
+
+//    @Test def testTriSelHidden2KConfig() {
+//        checkTestModelBruteForce("src/test/resources/triselhidden2.config")
+//    }
+//    @Test def testTriSelHidden3KConfig() {
+//        checkTestModelBruteForce("src/test/resources/triselhidden3.config")
+//    }
+//
+//    @Test def testTriSelHidden4KConfig() {
+//        checkTestModelBruteForce("src/test/resources/triselhidden4.config")
+//    }
+//    @Test def testTriSelHidden5KConfig() {
+//        checkTestModelBruteForce("src/test/resources/triselhidden5.config")
+//    }
     //    private def printAllConfig(kconfigFile: String) {
     //        val workingDir = new File(".")
     //        val fm = getModel(workingDir, kconfigFile)
@@ -307,10 +363,10 @@ class BusyboxTest {
         for (f <- selected)
             if (f endsWith "_MODULE")
                 writer.write("CONFIG_%s=m\n".format(f.dropRight(7)))
-        else
+            else
                 writer.write("CONFIG_%s=y\n".format(f))
         for (f <- deselected)
-            if (!(f endsWith "_MODULE") && !selected.contains(f+"_MODULE"))
+            if (!(f endsWith "_MODULE") && !selected.contains(f + "_MODULE"))
                 writer.write("# CONFIG_%s is not set\n".format(f))
         for ((option, value) <- nonBoolean)
             writer.write("CONFIG_%s=%s\n".format(option, value))
@@ -328,7 +384,7 @@ class BusyboxTest {
         for (l <- io.Source.fromFile(configFile).getLines()) {
             l match {
                 case EnabledConfig(c) => setConfigs ::= c
-                case ModuleConfig(c) => setConfigs ::= c+"_MODULE"
+                case ModuleConfig(c) => setConfigs ::= c + "_MODULE"
                 case NonBoolean(c, v) => setNonBoolean += (c -> v)
                 case NonBooleanHex(c, v) => setNonBoolean += (c -> v)
                 case NonBooleanStr(c, v) => setNonBoolean += (c -> v)
@@ -336,7 +392,7 @@ class BusyboxTest {
             }
         }
 
-        println("found config: " + (setConfigs++setNonBoolean.map(v => v._1 + "=" + v._2)).mkString(", "))
+        println("found config: " + (setConfigs ++ setNonBoolean.map(v => v._1 + "=" + v._2)).mkString(", "))
 
         for (s <- selected)
             if (!setConfigs.contains(s)) {

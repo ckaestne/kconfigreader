@@ -154,11 +154,23 @@ case class Item(val name: String) {
     def getDefaults(): Map[String, FeatureExpr] = {
         var result: Map[String, FeatureExpr] = Map()
         var covered: FeatureExpr = False
-        for ((v, expr) <- _default.reverse) {
+
+        def updateResult(v:String, newCond:FeatureExpr) {
             val prevCondition = result.getOrElse(v, False)
-            val cond = prevCondition or (expr.fexpr_both andNot covered)
+            val cond = prevCondition or (newCond andNot covered)
             result += (v -> cond)
-            covered = covered or expr.fexpr_both
+            covered = covered or newCond
+        }
+
+        for ((v, expr) <- _default.reverse) {
+            if (v=="y" && isTristate) {
+                updateResult(v, expr.fexpr_y)
+                updateResult("m", expr.fexpr_m)
+                //            } else if (v=="m")
+                //                updateResult(v, expr.fexpr_m)
+            } else
+                updateResult(v, expr.fexpr_both)
+
         }
         result
     }

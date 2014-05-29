@@ -101,26 +101,30 @@ case class Item(val name: String) {
 
         //invisible options
         if (!hasPrompt) {
-            val isDefault = getDefaultIsTrue()
-            println("y="+isDefault.fexpr_y+";m="+isDefault.fexpr_m+";both="+isDefault.fexpr_both)
+            val defaults = getDefaults()
+            val default_y=defaults.getOrElse("y",False)
+            val default_m=defaults.getOrElse("m",False)
+            val default_both = default_y or default_m
+            println("y=" + default_y + ";m=" + default_m+ ";both=" + default_both )
 
             //if invisible and off by default, then can only be activated by selects
             // notDefault -> !this | dep1 | dep2 | ... | depn
             //                        result = (isDefault.not implies selectedBy.foldLeft(this.fexpr.not)((expr, sel) => (sel._1.fexpr and sel._2.fexpr2) or expr)) :: result //TODO
             if (isTristate) {
-                result ::= (isDefault.fexpr_y.not implies selectedBy.foldLeft(this.fexpr_y.not)((expr, sel) => (sel._1.fexpr_y and sel._2.fexpr_y) or expr))
-                result ::= (isDefault.fexpr_m.not implies selectedBy.foldLeft(this.fexpr_m.not)((expr, sel) => (sel._1.fexpr_m and sel._2.fexpr_both) or expr))
+                result ::= MODULES implies (default_y.not implies selectedBy.foldLeft(this.fexpr_y.not)((expr, sel) => (sel._1.fexpr_y and sel._2.fexpr_y) or expr))
+                result ::= MODULES implies (default_m.not implies selectedBy.foldLeft(this.fexpr_m.not)((expr, sel) => (sel._1.fexpr_m and sel._2.fexpr_both) or expr))
+                result ::= MODULES.not implies (default_both.not implies selectedBy.foldLeft(this.fexpr_y.not)((expr, sel) => (sel._1.fexpr_both and sel._2.fexpr_both) or expr))
             } else
-                result ::= (isDefault.fexpr_both.not implies selectedBy.foldLeft(this.fexpr_y.not)((expr, sel) => (sel._1.fexpr_both and sel._2.fexpr_both) or expr))
+                result ::= (default_both.not implies selectedBy.foldLeft(this.fexpr_y.not)((expr, sel) => (sel._1.fexpr_both and sel._2.fexpr_both) or expr))
 
 
             //if invisible and on by default, then can only be deactivated by dependencies (== default conditions)
             // default -> this <=> defaultCondition
             if (isTristate) {
-                result ::= (isDefault.fexpr_y implies this.fexpr_y)
-                result ::= (isDefault.fexpr_m implies this.fexpr_both)
+                result ::= (default_y implies this.fexpr_y)
+                result ::= (default_m implies this.fexpr_both)
             } else
-                result ::= (isDefault.fexpr_both implies this.fexpr_y)
+                result ::= (default_both implies this.fexpr_y)
         }
 
         if (isTristate) {
@@ -142,17 +146,19 @@ case class Item(val name: String) {
         result
     } else Nil
 
-    def getDefaultIsTrue(): Expr = {
-        var result: Expr = Not(YTrue())
-        var covered: Expr = Not(YTrue())
+    /**
+     * returns the different defaults and their respective conditions
+     *
+     * this evaluates conditions to booleans(!), i.e., m and y are both considered true
+     */
+    def getDefaults(): Map[String, FeatureExpr] = {
+        var result: Map[String, FeatureExpr] = Map()
+        var covered: FeatureExpr = False
         for ((v, expr) <- _default.reverse) {
-            if (v == "y") {
-                result = Or(result, And(YTrue(), And(expr, Not(covered))))
-            }
-            if (v == "m") {
-                result = Or(result, And(MTrue(), And(expr, Not(covered)))) //TODO check
-            }
-            covered = Or(covered, expr)
+            val prevCondition = result.getOrElse(v, False)
+            val cond = prevCondition or (expr.fexpr_both andNot covered)
+            result += (v -> cond)
+            covered = covered or expr.fexpr_both
         }
         result
     }

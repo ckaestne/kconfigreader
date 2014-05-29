@@ -13,14 +13,14 @@ class RSFReaderTest {
         val m = Item("m")
         m.setDefault("y", YTrue())
 
-        assert(m.getDefaultIsTrue().fexpr2 equivalentTo True)
+        assert(m.getDefaults()("y") equivalentTo True)
     }
 
     @Test def testDefault2 {
         val m = Item("m")
         m.setDefault("n", YTrue())
 
-        assert(m.getDefaultIsTrue().fexpr2 equivalentTo False)
+        assert(m.getDefaults().getOrElse("y",False) equivalentTo False)
     }
 
     val fa=createDefinedExternal("A")
@@ -32,7 +32,7 @@ class RSFReaderTest {
         val m = Item("m")
         m.setDefault("y", Name(Item("A")))
 
-        assert(m.getDefaultIsTrue().fexpr2 equivalentTo fa)
+        assert(m.getDefaults()("y") equivalentTo fa)
     }
 
     @Test def testDefault4 {
@@ -40,7 +40,7 @@ class RSFReaderTest {
         m.setDefault("y", Name(Item("A")))
         m.setDefault("n", Name(Item("B")))
 
-        assert(m.getDefaultIsTrue().fexpr2 equivalentTo fa)
+        assert(m.getDefaults()("y") equivalentTo fa)
     }
 
 
@@ -49,7 +49,7 @@ class RSFReaderTest {
         m.setDefault("y", Name(Item("A")))
         m.setDefault("n",  YTrue())
 
-        assert(m.getDefaultIsTrue().fexpr2 equivalentTo fa)
+        assert(m.getDefaults()("y") equivalentTo fa)
     }
 
     @Test def testDefault6 {
@@ -58,7 +58,7 @@ class RSFReaderTest {
         m.setDefault("n", Name(Item("B")))
         m.setDefault("y", Name(Item("C")))
 
-        assert(m.getDefaultIsTrue().fexpr2 equivalentTo (fa or (fc andNot fb)))
+        assert(m.getDefaults()("y") equivalentTo (fa or (fc andNot fb)))
     }
 
 
@@ -68,6 +68,6 @@ class RSFReaderTest {
         m.setDefault("n",  YTrue())
         m.setDefault("y", Name(Item("B")))
 
-        assert(m.getDefaultIsTrue().fexpr2 equivalentTo fa)
+        assert(m.getDefaults()("y") equivalentTo fa)
     }
 }

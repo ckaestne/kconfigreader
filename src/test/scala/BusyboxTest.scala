@@ -132,19 +132,19 @@ class BusyboxTest {
     }
 
 
-//    @Test def testTriSelHidden2KConfig() {
-//        checkTestModelBruteForce("src/test/resources/triselhidden2.config")
-//    }
-//    @Test def testTriSelHidden3KConfig() {
-//        checkTestModelBruteForce("src/test/resources/triselhidden3.config")
-//    }
-//
-//    @Test def testTriSelHidden4KConfig() {
-//        checkTestModelBruteForce("src/test/resources/triselhidden4.config")
-//    }
-//    @Test def testTriSelHidden5KConfig() {
-//        checkTestModelBruteForce("src/test/resources/triselhidden5.config")
-//    }
+    @Test def testTriSelHidden2KConfig() {
+        checkTestModelBruteForce("src/test/resources/triselhidden2.config")
+    }
+    @Test def testTriSelHidden3KConfig() {
+        checkTestModelBruteForce("src/test/resources/triselhidden3.config")
+    }
+
+    @Test def testTriSelHidden4KConfig() {
+        checkTestModelBruteForce("src/test/resources/triselhidden4.config")
+    }
+    @Test def testTriSelHidden5KConfig() {
+        checkTestModelBruteForce("src/test/resources/triselhidden5.config")
+    }
     //    private def printAllConfig(kconfigFile: String) {
     //        val workingDir = new File(".")
     //        val fm = getModel(workingDir, kconfigFile)

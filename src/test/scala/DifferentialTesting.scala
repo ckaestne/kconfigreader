@@ -80,11 +80,10 @@ trait DifferentialTesting {
     }
 
 
-    def getModel(workingDir: File, kconfigFile: String) = {
+    def getModel(workingDir: File, kconfigFile: String, rsfFile:File = null) = {
         assert(workingDir.exists(), "working directory does not exist")
         assert(new File(workingDir, kconfigFile).exists(), "kconfig file does not exist")
-        val rsfFile = "tmp.rsf"
-        val rsf = new File(workingDir, rsfFile)
+        val rsf = if (rsfFile == null) new File(workingDir,  "tmp.rsf") else rsfFile
         rsf.createNewFile()
         Process(dumpconfTool.format(kconfigFile, rsfFile), workingDir).#>(rsf).!
         new RSFReader().readRSF(rsf)

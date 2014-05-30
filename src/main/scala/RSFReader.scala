@@ -61,6 +61,15 @@ class RSFReader {
 
 
         }
+        for (choice <- model.choices.values) {
+            //all choices are handled as if they are missing prompts and are on by default
+            //i.e., they are active unless dependencies prevent it
+            val choiceItem = model.getItem(choice.name)
+            choiceItem.tristateChoice = choice.isTristate
+            choiceItem.setPrompt(if (choice.required == "optional") "1" else "0")
+            choiceItem._default = List(("y", choiceItem.depends.getOrElse(YTrue())))
+
+        }
 
         model
     }
@@ -101,12 +110,12 @@ class RSFReader {
         //
         //    //||
         def dterm: Parser[Expr] =
-            term ~ rep(("||" | "|" | "or") ~> dterm) ^^ {
+            term ~ rep(("||") ~> dterm) ^^ {
                 case a ~ bs => bs.foldLeft(a)(Or(_, _))
             }
 
         def term: Parser[Expr] =
-            bool ~ rep(("&&" | "&" | "and") ~> term) ^^ {
+            bool ~ rep(("&&") ~> term) ^^ {
                 case a ~ bs => bs.foldLeft(a)(And(_, _))
             }
 
@@ -126,16 +135,28 @@ class RSFReader {
                 "y" ^^ { _ => YTrue()} |
                 "n" ^^ { _ => Not(YTrue())} |
                 "m" ^^ { _ => MTrue()} |
-                ID ~ opt(("=" | "!=") ~ bool) ^^ {
+                //                Int ^^ {_ => YTrue()} | //TODO accepting numbers/strings not supported yet
+                ID ~ opt(("=" | "!=") ~ opt(bool)) ^^ {
                     case n ~ v =>
-                        val r = Name(fm.getItem(n))
-                        if (v.isDefined) {
-                            val s = Equals(r, v.get._2)
-                            if (v.get._1 == "!=") Not(s) else s
-                        } else r
+                        try {
+                            n.toInt
+                            //if that's successful, that's not a supported ID right now
+                            YTrue()
+                        } catch {
+                            case e: NumberFormatException =>
+
+                                val r = Name(fm.getItem(n))
+                                if (v.isDefined && v.get._2.isDefined) {
+                                    //TODO handle case of empty strings properly
+                                    val s = Equals(r, v.get._2.get)
+                                    if (v.get._1 == "!=") Not(s) else s
+                                } else r
+                        }
                 }
 
         def ID: Regex = "[A-Za-z0-9_]+".r
+
+        def Int: Regex = "^\\d+$".r
     }
 
 

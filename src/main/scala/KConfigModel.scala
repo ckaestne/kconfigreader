@@ -74,13 +74,15 @@ class KConfigModel() {
  */
 
 case class Item(val name: String) {
+
     var _type: String = "boolean"
     var hasPrompt: Boolean = false
-    private var _default: List[(String, Expr)] = Nil
+    private[kconfig] var _default: List[(String, Expr)] = Nil
     var depends: Option[Expr] = None
     var selectedBy: List[(Item, Expr)] = Nil
     lazy val fexpr_y = FeatureExprFactory.createDefinedExternal(name)
     lazy val fexpr_both = if (isTristate) (fexpr_y or fexpr_m) else fexpr_y
+    var tristateChoice = false //special hack for choices
 
     def setType(_type: String) = {
         this._type = _type
@@ -122,11 +124,10 @@ case class Item(val name: String) {
             val default_y = defaults.getOrElse("y", False)
             val default_m = defaults.getOrElse("m", False)
             val default_both = default_y or default_m
-            println("y=" + default_y + ";m=" + default_m + ";both=" + default_both)
+//            println("y=" + default_y + ";m=" + default_m + ";both=" + default_both)
 
             //if invisible and off by default, then can only be activated by selects
             // notDefault -> !this | dep1 | dep2 | ... | depn
-            //                        result = (isDefault.not implies selectedBy.foldLeft(this.fexpr.not)((expr, sel) => (sel._1.fexpr and sel._2.fexpr2) or expr)) :: result //TODO
             if (isTristate) {
                 result ::= MODULES implies (default_y.not implies selectedBy.foldLeft(this.fexpr_y.not)((expr, sel) => (sel._1.fexpr_y and sel._2.fexpr_y) or expr))
                 result ::= MODULES implies (default_m.not implies selectedBy.foldLeft(this.fexpr_m.not)((expr, sel) => (sel._1.fexpr_m and sel._2.fexpr_both) or expr))
@@ -134,14 +135,18 @@ case class Item(val name: String) {
             } else
                 result ::= (default_both.not implies selectedBy.foldLeft(this.fexpr_y.not)((expr, sel) => (sel._1.fexpr_both and sel._2.fexpr_both) or expr))
 
-
             //if invisible and on by default, then can only be deactivated by dependencies (== default conditions)
             // default -> this <=> defaultCondition
             if (isTristate) {
                 result ::= (default_y implies this.fexpr_y)
                 result ::= (default_m implies this.fexpr_both)
-            } else
-                result ::= (default_both implies this.fexpr_y)
+            } else  {
+                var c = (default_both implies this.fexpr_y)
+                //special hack for tristate choices, that are optional if modules are selected but mandatory otherwise
+                if (tristateChoice) c = MODULES.not implies c
+                result ::= c
+            }
+//                result ::=
         }
 
         if (isTristate) {
@@ -153,11 +158,8 @@ case class Item(val name: String) {
         //selected by any select-dependencies
         // -> (dep1 | dep2 | ... | depn) -> this
         for (sel <- selectedBy) {
-            //            if (isTristate) {
             result ::= ((sel._1.fexpr_y and sel._2.fexpr_y) implies this.fexpr_y)
             result ::= ((sel._1.fexpr_both and sel._2.fexpr_both) implies this.fexpr_both)
-            //            } else
-            //                result ::= ((sel._1.fexpr_both and sel._2.fexpr_both) implies this.fexpr_both)
         }
 
         result
@@ -183,8 +185,6 @@ case class Item(val name: String) {
             if (v == "y" && isTristate) {
                 updateResult(v, expr.fexpr_y)
                 updateResult("m", expr.fexpr_m)
-                //            } else if (v=="m")
-                //                updateResult(v, expr.fexpr_m)
             } else
                 updateResult(v, expr.fexpr_both)
 
@@ -237,12 +237,9 @@ case class Choice(val name: String) {
     }
 
     def getConstraints: List[FeatureExpr] = {
-        //        (thisMandatory :: oneChild :: implyParent) ++ mutex
-        var result: List[FeatureExpr] = List()
-        //choice -> at least one child//        (thisMandatory :: oneChild :: implyParent) ++ mutex
-
-        if (this.required != "optional")
-            result ::= fexpr or (if (isTristate) MODULES else False)
+      var result: List[FeatureExpr] = List()
+        //whether choices are mandatory or depend on others are set by the Items abstraction, not here
+        //choice -> at least one child
         result ::= (this.fexpr implies (items.foldLeft(False)(_ or _.fexpr_both)))
         //every option implies the choice
         result ++= items.map(_.fexpr_both implies this.fexpr)

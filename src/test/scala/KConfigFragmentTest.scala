@@ -1,0 +1,167 @@
+package de.fosd.typechef.kconfig
+
+import org.junit._
+import de.fosd.typechef.featureexpr.FeatureExpr
+
+/**
+ * differential testing infrastructure and tests for kconfig
+ *
+ * analyzes all configurations of all features (or a subset of features)
+ * in a kconfig file
+ *
+ * it computes the answer based on the model derived from the kconfig
+ * file and checks that answer against running kconfig (the conf tool
+ * with --olddefconfig option) which would fix invalid inputs.
+ *
+ * the kconfig extraction is broken if there is at least one configuration
+ * for which kconfig returns a different value than the derived
+ * model
+ *
+ */
+class KConfigFragmentTest extends DifferentialTesting {
+
+    @Test def testMiniKConfig() {
+        checkTestModelBruteForce("src/test/resources/mini.config")
+    }
+
+    @Test def testMini2KConfig() {
+        checkTestModelBruteForce("src/test/resources/mini2.config")
+    }
+
+    @Test def testMini3KConfig() {
+        checkTestModelBruteForce("src/test/resources/mini3.config")
+    }
+
+    @Test def testDepKConfig() {
+        checkTestModelBruteForce("src/test/resources/dep.config")
+    }
+
+    @Test def testSelKConfig() {
+        checkTestModelBruteForce("src/test/resources/sel.config")
+    }
+
+    @Test def testSelHiddenKConfig() {
+        checkTestModelBruteForce("src/test/resources/selhidden.config")
+    }
+
+
+    @Test def testSelHidden2KConfig() {
+        checkTestModelBruteForce("src/test/resources/selhidden2.config")
+    }
+
+    @Test def testSelHidden3KConfig() {
+        checkTestModelBruteForce("src/test/resources/selhidden3.config")
+    }
+
+    @Test def testSelHidden4KConfig() {
+        checkTestModelBruteForce("src/test/resources/selhidden4.config")
+    }
+
+    @Test def testSelHidden5KConfig() {
+        checkTestModelBruteForce("src/test/resources/selhidden5.config")
+    }
+
+    @Test def testChoiceKConfig() {
+        checkTestModelBruteForce("src/test/resources/choice.config")
+    }
+
+    @Test
+    @Ignore def testRandomFiles() {
+        for (i <- 0 until 100)
+            checkTestModelBruteForce("src/test/resources/gen/randombool%02d.conf".format(i))
+    }
+
+    @Ignore
+    @Test def testInt() {
+        checkTestModelBruteForce("src/test/resources/int.config")
+    }
+
+    @Ignore
+    @Test def testHex() {
+        checkTestModelBruteForce("src/test/resources/hex.config")
+    }
+
+    @Ignore
+    @Test def testString() {
+        checkTestModelBruteForce("src/test/resources/string.config")
+    }
+
+    @Test def testTri() {
+        checkTestModelBruteForce("src/test/resources/tri.config")
+    }
+
+    @Test def testTriDep() {
+        checkTestModelBruteForce("src/test/resources/tridep.config")
+    }
+
+    @Test def testTri2Dep() {
+        checkTestModelBruteForce("src/test/resources/tridep2.config")
+    }
+
+    @Test def testTri3Dep() {
+        checkTestModelBruteForce("src/test/resources/tridep3.config")
+    }
+
+    @Test def testTriSel() {
+        checkTestModelBruteForce("src/test/resources/trisel.config")
+    }
+
+    @Test def testTriSel2() {
+        checkTestModelBruteForce("src/test/resources/trisel2.config")
+    }
+
+    @Test def testTriSel3() {
+        checkTestModelBruteForce("src/test/resources/trisel3.config")
+    }
+
+    @Test def testTri4Dep() {
+        checkTestModelBruteForce("src/test/resources/tridep4.config")
+    }
+
+    @Test def testTri5Dep() {
+        checkTestModelBruteForce("src/test/resources/tridep5.config")
+    }
+
+    @Test def testTriSel4() {
+        checkTestModelBruteForce("src/test/resources/trisel4.config")
+    }
+
+    @Test def testTriHidden() {
+        checkTestModelBruteForce("src/test/resources/trihidden.config")
+    }
+
+    @Test def testTriHidden2() {
+        checkTestModelBruteForce("src/test/resources/trihidden2.config")
+    }
+
+    @Test def testTriHidden3() {
+        checkTestModelBruteForce("src/test/resources/trihidden3.config")
+    }
+
+    @Test def testTriHidden4() {
+        checkTestModelBruteForce("src/test/resources/trihidden4.config")
+    }
+
+
+    @Test def testTriSelHiddenKConfig() {
+        checkTestModelBruteForce("src/test/resources/triselhidden.config")
+    }
+
+
+    @Test def testTriSelHidden2KConfig() {
+        checkTestModelBruteForce("src/test/resources/triselhidden2.config")
+    }
+
+    @Test def testTriSelHidden3KConfig() {
+        checkTestModelBruteForce("src/test/resources/triselhidden3.config")
+    }
+
+    @Test def testTriSelHidden4KConfig() {
+        checkTestModelBruteForce("src/test/resources/triselhidden4.config")
+    }
+
+    @Test def testTriSelHidden5KConfig() {
+        checkTestModelBruteForce("src/test/resources/triselhidden5.config")
+    }
+
+}

@@ -4,18 +4,7 @@ import org.junit._
 import de.fosd.typechef.featureexpr.FeatureExpr
 
 /**
- * differential testing infrastructure and tests for kconfig
- *
- * analyzes all configurations of all features (or a subset of features)
- * in a kconfig file
- *
- * it computes the answer based on the model derived from the kconfig
- * file and checks that answer against running kconfig (the conf tool
- * with --olddefconfig option) which would fix invalid inputs.
- *
- * the kconfig extraction is broken if there is at least one configuration
- * for which kconfig returns a different value than the derived
- * model
+ * brute force tests with many small handwritten kconfig files
  *
  */
 class KConfigFragmentTest extends DifferentialTesting {

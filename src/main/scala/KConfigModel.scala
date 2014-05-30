@@ -4,21 +4,30 @@ import scala.Some
 import de.fosd.typechef.featureexpr.{FeatureExprFactory, FeatureExpr}
 import FeatureExprFactory._
 
+private object KConfigModel {
+
+    val MODULES = createDefinedExternal("MODULES")
+
+}
 
 class KConfigModel() {
     val items: collection.mutable.Map[String, Item] = collection.mutable.Map()
     val choices: collection.mutable.Map[String, Choice] = collection.mutable.Map()
+
     def setType(itemName: String, _type: String) {
         getItem(itemName).setType(_type)
     }
+
     def getItem(itemName: String): Item =
         items.getOrElseUpdate(itemName, Item(itemName))
+
     def getChoice(choiceName: String): Choice =
         choices.getOrElseUpdate(choiceName, Choice(choiceName))
 
     override def toString() = items.toString() + "\n" + choices.toString()
 
     def getConstraints: List[FeatureExpr] = (items.values.flatMap(_.getConstraints) ++ choices.values.flatMap(_.getConstraints)).toList
+
     def getFM: FeatureExpr = {
         //        var f: FeatureExpr = True
         //        var d: String = ""
@@ -32,7 +41,9 @@ class KConfigModel() {
         assert(fm.isSatisfiable, "model is not satisfiable")
         fm
     }
+
     def getItems = items.keys.toSet
+
     def getBooleanSymbols: Set[String] = {
         val i = items.values.filterNot(_.name startsWith "CHOICE_")
         val boolitems = i.filter(_._type == "boolean")
@@ -70,23 +81,29 @@ case class Item(val name: String) {
     var selectedBy: List[(Item, Expr)] = Nil
     lazy val fexpr_y = FeatureExprFactory.createDefinedExternal(name)
     lazy val fexpr_both = if (isTristate) (fexpr_y or fexpr_m) else fexpr_y
+
     def setType(_type: String) = {
         this._type = _type
         this
     }
+    import KConfigModel.MODULES
+
     def setPrompt(p: String) {
         this.hasPrompt = p == "1"
     }
+
     def setDefault(defaultValue: String, condition: Expr) {
         this._default = (defaultValue, condition) :: this._default
     }
+
     def setDepends(s: Expr) {
         this.depends = Some(s)
     }
+
     def setSelectedBy(item: Item, condition: Expr = YTrue()) {
         this.selectedBy = (item, condition) :: this.selectedBy
     }
-    private val MODULES = createDefinedExternal("MODULES")
+
     def getConstraints: List[FeatureExpr] = if (Set("boolean", "tristate") contains _type) {
         var result: List[FeatureExpr] = Nil
 
@@ -102,10 +119,10 @@ case class Item(val name: String) {
         //invisible options
         if (!hasPrompt) {
             val defaults = getDefaults()
-            val default_y=defaults.getOrElse("y",False)
-            val default_m=defaults.getOrElse("m",False)
+            val default_y = defaults.getOrElse("y", False)
+            val default_m = defaults.getOrElse("m", False)
             val default_both = default_y or default_m
-            println("y=" + default_y + ";m=" + default_m+ ";both=" + default_both )
+            println("y=" + default_y + ";m=" + default_m + ";both=" + default_both)
 
             //if invisible and off by default, then can only be activated by selects
             // notDefault -> !this | dep1 | dep2 | ... | depn
@@ -155,7 +172,7 @@ case class Item(val name: String) {
         var result: Map[String, FeatureExpr] = Map()
         var covered: FeatureExpr = False
 
-        def updateResult(v:String, newCond:FeatureExpr) {
+        def updateResult(v: String, newCond: FeatureExpr) {
             val prevCondition = result.getOrElse(v, False)
             val cond = prevCondition or (newCond andNot covered)
             result += (v -> cond)
@@ -163,7 +180,7 @@ case class Item(val name: String) {
         }
 
         for ((v, expr) <- _default.reverse) {
-            if (v=="y" && isTristate) {
+            if (v == "y" && isTristate) {
                 updateResult(v, expr.fexpr_y)
                 updateResult("m", expr.fexpr_m)
                 //            } else if (v=="m")
@@ -187,7 +204,9 @@ case class Item(val name: String) {
             result = result.map(v => ("\"" + v._1 + "\"", v._2))
         result
     }
+
     def isTristate = _type == "tristate"
+
     lazy val modulename = this.name + "_MODULE"
     lazy val fexpr_m = FeatureExprFactory.createDefinedExternal(modulename)
 
@@ -199,29 +218,44 @@ case class Choice(val name: String) {
     var _type: String = "boolean"
     var items: List[Item] = Nil
     val fexpr = FeatureExprFactory.createDefinedExternal(name)
+
+    import KConfigModel.MODULES
+
     def setType(_type: String) = {
         this._type = _type
         this
     }
+
     def setRequired(p: String) = {
         this.required = p
         this
     }
+
     def addItem(p: Item) = {
         this.items = p :: this.items
         this
     }
 
     def getConstraints: List[FeatureExpr] = {
-        //choice -> at least one child //TODO unless optional
-        val oneChild = (this.fexpr implies (items.foldLeft(False)(_ or _.fexpr_y)))
+        //        (thisMandatory :: oneChild :: implyParent) ++ mutex
+        var result: List[FeatureExpr] = List()
+        //choice -> at least one child//        (thisMandatory :: oneChild :: implyParent) ++ mutex
+
+        if (this.required != "optional")
+            result ::= fexpr or (if (isTristate) MODULES else False)
+        result ::= (this.fexpr implies (items.foldLeft(False)(_ or _.fexpr_both)))
         //every option implies the choice
-        val implyParent = items.map(_.fexpr_y implies this.fexpr)
-        //all options are mutually exclusive //TODO special for tristate
-        val mutex =
-            for (a <- items.tails.take(items.size); b <- a.tail) yield (a.head.fexpr_y mex b.fexpr_y)
+        result ++= items.map(_.fexpr_both implies this.fexpr)
+        //all options are mutually exclusive
+        result ++=
+            (for (a <- items.tails.take(items.size); b <- a.tail) yield (a.head.fexpr_y mex b.fexpr_y))
+        if (isTristate)
+            result ++= (for (a <- items) yield
+                a.fexpr_y implies items.foldLeft(True)((f, i) => f and i.fexpr_m.not()))
+
         //this is mandatory
-        val thisMandatory = if (required == "required") fexpr else False
-        (thisMandatory :: oneChild :: implyParent) ++ mutex
+        result
     }
+
+    def isTristate = _type == "tristate"
 }

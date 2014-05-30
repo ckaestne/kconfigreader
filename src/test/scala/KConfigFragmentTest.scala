@@ -164,4 +164,29 @@ class KConfigFragmentTest extends DifferentialTesting {
         checkTestModelBruteForce("src/test/resources/triselhidden5.config")
     }
 
+    @Test def testMenuconfig() {
+        checkTestModelBruteForce("src/test/resources/menuconfig.config")
+    }
+
+    @Test def testChoice2() {
+        checkTestModelBruteForce("src/test/resources/choice2.config")
+    }
+
+    @Test def testChoiceTri() {
+        checkTestModelBruteForce("src/test/resources/choicetri.config")
+    }
+
+    @Test def testChoiceOpt() {
+        checkTestModelBruteForce("src/test/resources/choiceopt.config")
+    }
+
+
+    @Test def testTriDepExtra() {
+        checkTestModelBruteForce("src/test/resources/tridepextra.config")
+    }
+
+    @Test def testTriDepExtra2() {
+        checkTestModelBruteForce("src/test/resources/tridepextra2.config")
+    }
+
 }

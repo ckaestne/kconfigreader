@@ -52,7 +52,7 @@ class RSFReader {
                 targetItem.setSelectedBy(model.getItem(itemName), condition)
             } else
             if (command == "Choice") {
-                model.getChoice(itemName).setRequired(substrs(2)).setType(substrs(2))
+                model.getChoice(itemName).setRequired(substrs(2)).setType(substrs(3))
             } else
             if (command == "ChoiceItem") {
                 model.getChoice(substrs(2)).addItem(model.getItem(itemName))

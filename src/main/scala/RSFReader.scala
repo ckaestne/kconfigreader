@@ -124,9 +124,12 @@ class RSFReader {
                 //            } |
                 "y" ^^ { _ => YTrue()} |
                 "m" ^^ { _ => MTrue()} |
-                ID ^^ {
-                    n =>
-                        Name(fm.getItem(n))
+                ID ~ opt(("="|"!=") ~ ("y"|"m"|"n")) ^^ {
+                    case n ~ v =>
+                        val r = Name(fm.getItem(n))
+                        if (v.isDefined)
+                            HasValue(r,v.get._1, v.get._2)
+                        else r
                 }
 
         def ID: Regex = "[A-Za-z0-9_]+".r

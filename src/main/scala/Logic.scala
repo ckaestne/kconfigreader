@@ -13,18 +13,23 @@ abstract class Expr {
     def kexpr: String
 
     def eval(assignedValues: Set[String]): Boolean
+
     def eval(assignedValues: Map[String, Char]): Char
 
     //get expression in three-value logic, for y and m
     val fexpr_y: FeatureExpr
     val fexpr_m: FeatureExpr
+
     def fexpr_both: FeatureExpr = fexpr_m or fexpr_y
 }
 
 case class Name(n: Item) extends Expr {
     lazy val fexpr2: FeatureExpr = n.fexpr_y
+
     def kexpr = n.name
+
     def eval(assignedValues: Set[String]): Boolean = assignedValues.contains(n.name)
+
     def eval(assignedValues: Map[String, Char]): Char = assignedValues(n.name)
 
     lazy val fexpr_y: FeatureExpr = n.fexpr_y
@@ -33,8 +38,11 @@ case class Name(n: Item) extends Expr {
 
 case class And(a: Expr, b: Expr) extends Expr {
     lazy val fexpr2: FeatureExpr = a.fexpr2 and b.fexpr2
+
     def kexpr = a.kexpr + " && " + b.kexpr
+
     def eval(v: Set[String]) = a.eval(v) && b.eval(v)
+
     def eval(v: Map[String, Char]): Char = {
         val av = a.eval(v)
         val bv = b.eval(v)
@@ -49,8 +57,11 @@ case class And(a: Expr, b: Expr) extends Expr {
 
 case class Or(a: Expr, b: Expr) extends Expr {
     lazy val fexpr2: FeatureExpr = a.fexpr2 or b.fexpr2
+
     def kexpr = "(" + a.kexpr + " || " + b.kexpr + ")"
+
     def eval(v: Set[String]) = a.eval(v) || b.eval(v)
+
     def eval(v: Map[String, Char]): Char = {
         val av = a.eval(v)
         val bv = b.eval(v)
@@ -65,8 +76,11 @@ case class Or(a: Expr, b: Expr) extends Expr {
 
 case class Not(a: Expr) extends Expr {
     lazy val fexpr2: FeatureExpr = a.fexpr2.not
+
     def kexpr = "!(" + a.kexpr + ")"
+
     def eval(v: Set[String]) = !a.eval(v)
+
     def eval(v: Map[String, Char]): Char = {
         val av = a.eval(v)
         if (av == 'y') 'n'
@@ -80,18 +94,52 @@ case class Not(a: Expr) extends Expr {
 
 case class YTrue() extends Expr {
     lazy val fexpr2: FeatureExpr = True
+
     def kexpr = "y"
+
     def eval(v: Set[String]) = true
+
     def eval(v: Map[String, Char]): Char = 'y'
 
     lazy val fexpr_y: FeatureExpr = True
     lazy val fexpr_m: FeatureExpr = False
 }
 
+case class HasValue(a: Expr, op: String, value: String) extends Expr {
+
+    lazy val fexpr2: FeatureExpr = if (value != "n") True else False
+
+    def kexpr = a + op + value
+
+    def eval(v: Set[String]) = {
+        val equal = a.eval(v) ^ (v != "n")
+        if (op == "!=") !equal else equal
+    }
+
+    def eval(v: Map[String, Char]): Char = if (a.eval(v) == value.head) 'y' else 'n'
+
+    lazy val fexpr_y: FeatureExpr = {
+        val equal = value match {
+            case "y" => a.fexpr_y
+            case "m" => a.fexpr_m
+            case "n" => a.fexpr_both.not()
+            case _ => False //TODO unsupported case
+        }
+        if (op == "!=") equal.not else equal
+    }
+
+    lazy val fexpr_m: FeatureExpr = False
+
+
+}
+
 case class MTrue() extends Expr {
     lazy val fexpr2: FeatureExpr = False
+
     def kexpr = "y"
+
     def eval(v: Set[String]) = true
+
     def eval(v: Map[String, Char]): Char = 'm'
 
     lazy val fexpr_y: FeatureExpr = False

@@ -105,28 +105,18 @@ case class YTrue() extends Expr {
     lazy val fexpr_m: FeatureExpr = False
 }
 
-case class HasValue(a: Expr, op: String, value: String) extends Expr {
+case class Equals(a: Expr, b: Expr) extends Expr {
 
-    lazy val fexpr2: FeatureExpr = if (value != "n") True else False
+    lazy val fexpr2: FeatureExpr = a.fexpr2 equiv b.fexpr2
 
-    def kexpr = a + op + value
+    def kexpr = a.kexpr + "=" + b.kexpr
 
-    def eval(v: Set[String]) = {
-        val equal = a.eval(v) ^ (v != "n")
-        if (op == "!=") !equal else equal
-    }
+    def eval(v: Set[String]) =         a.eval(v) == b.eval(v)
 
-    def eval(v: Map[String, Char]): Char = if (a.eval(v) == value.head) 'y' else 'n'
 
-    lazy val fexpr_y: FeatureExpr = {
-        val equal = value match {
-            case "y" => a.fexpr_y
-            case "m" => a.fexpr_m
-            case "n" => a.fexpr_both.not()
-            case _ => False //TODO unsupported case
-        }
-        if (op == "!=") equal.not else equal
-    }
+    def eval(v: Map[String, Char]): Char = if (a.eval(v) == b.eval(v)) 'y' else 'n'
+
+    lazy val fexpr_y: FeatureExpr = (a.fexpr_y equiv b.fexpr_y) and (a.fexpr_m equiv b.fexpr_m)
 
     lazy val fexpr_m: FeatureExpr = False
 

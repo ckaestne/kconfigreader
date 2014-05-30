@@ -38,9 +38,9 @@ class RSFReader {
                 model.getItem(itemName).setDefault(defaultValue, condition)
             } else
             if (command == "Depends") {
-                var str=substrs(2).drop(1).dropRight(1)
-                str = str.replace("<choice>.....","y")
-                str = str.replaceFirst("^CHOICE_\\d+","y")
+                var str = substrs(2).drop(1).dropRight(1)
+                str = str.replace("<choice>.....", "y")
+                str = str.replaceFirst("^CHOICE_\\d+", "y")
                 if (str.endsWith(" && CHOICE_0"))
                     str = str.dropRight(12)
                 model.getItem(itemName).setDepends(parser.parseExpr(str))
@@ -74,6 +74,7 @@ class RSFReader {
 
         //implications
         def expr: Parser[Expr] = dterm
+
         //        "oneOf" ~ "(" ~> rep1sep(expr, ",") <~ ")" ^^ {
         //            e => oneOf(e)
         //        } | "atLeastOne" ~ "(" ~> rep1sep(expr, ",") <~ ")" ^^ {
@@ -123,13 +124,15 @@ class RSFReader {
                 //                x => featureFactory.False
                 //            } |
                 "y" ^^ { _ => YTrue()} |
+                "n" ^^ { _ => Not(YTrue())} |
                 "m" ^^ { _ => MTrue()} |
-                ID ~ opt(("="|"!=") ~ ("y"|"m"|"n")) ^^ {
+                ID ~ opt(("=" | "!=") ~ bool) ^^ {
                     case n ~ v =>
                         val r = Name(fm.getItem(n))
-                        if (v.isDefined)
-                            HasValue(r,v.get._1, v.get._2)
-                        else r
+                        if (v.isDefined) {
+                            val s = Equals(r, v.get._2)
+                            if (v.get._1 == "!=") Not(s) else s
+                        } else r
                 }
 
         def ID: Regex = "[A-Za-z0-9_]+".r

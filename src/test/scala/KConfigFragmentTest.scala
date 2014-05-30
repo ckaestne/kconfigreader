@@ -189,4 +189,8 @@ class KConfigFragmentTest extends DifferentialTesting {
         checkTestModelBruteForce("src/test/resources/tridepextra2.config")
     }
 
+    @Test def testTriDepExtra3() {
+        checkTestModelBruteForce("src/test/resources/tridepextra3.config")
+    }
+
 }

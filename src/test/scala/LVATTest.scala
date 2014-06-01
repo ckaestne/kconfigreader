@@ -13,10 +13,10 @@ class LVATTest extends DifferentialTesting {
     }
 
     @Test def testLVATtmp() {
-        checkTestModelBruteForce("src/test/resources/undertaker/test2.fm")
+        checkTestModelBruteForce("src/test/resources/undertaker/multiple-prompts.fm")
     }
     @Test def testChoice() {
-        checkTestModelBruteForce("src/test/resources/undertaker/choice.fm")
+        checkTestModelBruteForce("src/test/resources/undertaker/choice2.fm")
     }
     @Test def testDefaultDoubled() {
         checkTestModelBruteForce("src/test/resources/undertaker/default-doubled.fm")

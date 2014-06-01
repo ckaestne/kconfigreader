@@ -13,7 +13,6 @@ import FeatureExprFactory._
 class RSFReader {
 
 
-
     def readRSF(file: File): KConfigModel = {
         val lines = io.Source.fromFile(file).getLines()
 
@@ -21,21 +20,27 @@ class RSFReader {
 
         val parser = new ConstraintParser(model)
 
-        def cleanParseExpr(s: String):Expr = {
-            var str = s.drop(1).dropRight(1)
-            str = str.replace("<choice>.....", "y")
-            str = str.replace("<choice>=y", "y")
-            str = str.replaceFirst("^CHOICE_\\d+", "y")
-            if (str.endsWith(" && CHOICE_0"))
-                str = str.dropRight(12)
-            parser.parseExpr(str)
-        }
 
 
         for (line <- lines) {
             val substrs = line.split("\t").toList
             val command = substrs(0)
             val itemName: String = substrs.applyOrElse[Int, String](1, _ => "")
+
+            def cleanParseExpr(s: String): Expr = {
+                var str = s.drop(1).dropRight(1)
+                //undertaker creates some strange output when inside choices
+                val parentChoice = model.choices.values.find(_.items contains model.getItem(itemName))
+                if (parentChoice.isDefined) {
+                    str = str.replace("<choice>.....", "y")
+                    str = str.replaceFirst("^CHOICE_\\d+", "y")
+                    str = str.replace("<choice>=y", parentChoice.get.name + "=y")//this should actually be preserved because it makes a difference in tristate choices
+                }
+                if (str.endsWith(" && CHOICE_0"))
+                    str = str.dropRight(12)
+                parser.parseExpr(str)
+            }
+
 
             if (command == "Item") {
                 model.getItem(itemName).setType(substrs(2))

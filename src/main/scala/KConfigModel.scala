@@ -227,7 +227,7 @@ case class Item(val name: String, model: KConfigModel) {
     def isTristate = _type == "tristate"
 
     lazy val modulename = if (isTristate) this.name + "_MODULE" else name
-    lazy val fexpr_m = FeatureExprFactory.createDefinedExternal(modulename)
+    lazy val fexpr_m = if (isTristate) FeatureExprFactory.createDefinedExternal(modulename) else False
 
     override def toString = "Item "+name
 }
@@ -237,7 +237,9 @@ case class Choice(val name: String) {
     var required: String = ""
     var _type: String = "boolean"
     var items: List[Item] = Nil
-    val fexpr = FeatureExprFactory.createDefinedExternal(name)
+    lazy val fexpr_y = FeatureExprFactory.createDefinedExternal(name)
+    lazy val fexpr_m = if (isTristate) FeatureExprFactory.createDefinedExternal(name+"_MODULE") else False
+    lazy val fexpr_both = fexpr_m or fexpr_y
 
     import KConfigModel.MODULES
 
@@ -260,15 +262,24 @@ case class Choice(val name: String) {
         var result: List[FeatureExpr] = List()
         //whether choices are mandatory or depend on others are set by the Items abstraction, not here
         //choice -> at least one child
-        result ::= (this.fexpr implies (items.foldLeft(False)(_ or _.fexpr_both)))
+        result ::= (this.fexpr_both implies (items.foldLeft(False)(_ or _.fexpr_both)))
         //every option implies the choice
-        result ++= items.map(_.fexpr_both implies this.fexpr)
-        //all options are mutually exclusive
+        result ++= items.map(_.fexpr_both implies this.fexpr_both)
+        //children can only select "m" if entire choice is "m"
+        if (isTristate)
+          result ++= items.filter(_.isTristate).map(_.fexpr_m implies this.fexpr_m)
+        //all options are mutually exclusive in "y" setting (not in "m")
         result ++=
             (for (a <- items.tails.take(items.size); b <- a.tail) yield (a.head.fexpr_y mex b.fexpr_y))
+        //if one entry is selected as "y" no other entry may be selected as "m"
         if (isTristate)
             result ++= (for (a <- items) yield
                 a.fexpr_y implies items.foldLeft(True)((f, i) => f and i.fexpr_m.not()))
+
+        if (isTristate) {
+            result ::= (fexpr_m mex fexpr_y)
+            result ::= (fexpr_m implies MODULES)
+        }
 
         //this is mandatory
         result

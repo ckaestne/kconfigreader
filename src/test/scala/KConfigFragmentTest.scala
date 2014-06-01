@@ -60,17 +60,14 @@ class KConfigFragmentTest extends DifferentialTesting {
             checkTestModelBruteForce("src/test/resources/gen/randombool%02d.conf".format(i))
     }
 
-    @Ignore
     @Test def testInt() {
         checkTestModelBruteForce("src/test/resources/int.config")
     }
 
-    @Ignore
     @Test def testHex() {
         checkTestModelBruteForce("src/test/resources/hex.config")
     }
 
-    @Ignore
     @Test def testString() {
         checkTestModelBruteForce("src/test/resources/string.config")
     }

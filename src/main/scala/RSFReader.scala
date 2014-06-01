@@ -13,12 +13,24 @@ import FeatureExprFactory._
 class RSFReader {
 
 
+
     def readRSF(file: File): KConfigModel = {
         val lines = io.Source.fromFile(file).getLines()
 
         val model = new KConfigModel()
 
         val parser = new ConstraintParser(model)
+
+        def cleanParseExpr(s: String):Expr = {
+            var str = s.drop(1).dropRight(1)
+            str = str.replace("<choice>.....", "y")
+            str = str.replace("<choice>=y", "y")
+            str = str.replaceFirst("^CHOICE_\\d+", "y")
+            if (str.endsWith(" && CHOICE_0"))
+                str = str.dropRight(12)
+            parser.parseExpr(str)
+        }
+
 
         for (line <- lines) {
             val substrs = line.split("\t").toList
@@ -29,7 +41,11 @@ class RSFReader {
                 model.getItem(itemName).setType(substrs(2))
             } else
             if (command == "HasPrompts") {
-                model.getItem(itemName).setPrompt(substrs(2))
+                //ignore, just counts the number of prompts which is meaningless
+            } else
+            if (command == "Prompt") {
+                val condition = cleanParseExpr(substrs(2))
+                model.getItem(itemName).setPrompt(condition)
             } else
             if (command == "Default") {
                 //Depends <CurrentItem> "<DefaultValue>" "<Condition>"
@@ -38,13 +54,8 @@ class RSFReader {
                 model.getItem(itemName).setDefault(defaultValue, condition)
             } else
             if (command == "Depends") {
-                var str = substrs(2).drop(1).dropRight(1)
-                str = str.replace("<choice>.....", "y")
-                str = str.replace("<choice>=y", "y")
-                str = str.replaceFirst("^CHOICE_\\d+", "y")
-                if (str.endsWith(" && CHOICE_0"))
-                    str = str.dropRight(12)
-                model.getItem(itemName).setDepends(parser.parseExpr(str))
+                var expr = cleanParseExpr(substrs(2))
+                model.getItem(itemName).setDepends(expr)
             } else
             if (command == "ItemSelects") {
                 //ItemSelects <CurrentItem> "<TargetItem>" "<Condition>"
@@ -67,7 +78,7 @@ class RSFReader {
             //i.e., they are active unless dependencies prevent it
             val choiceItem = model.getItem(choice.name)
             choiceItem.tristateChoice = choice.isTristate
-            choiceItem.setPrompt(if (choice.required == "optional") "1" else "0")
+            choiceItem.setPrompt(if (choice.required == "optional") YTrue() else Not(YTrue()))
             choiceItem._default = List(("y", choiceItem.depends.getOrElse(YTrue())))
 
         }

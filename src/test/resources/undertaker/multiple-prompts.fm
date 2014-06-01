@@ -1,9 +1,12 @@
-if X86_32
+config A
+	bool "A"
+
+if A
 	config X86_EXTENDED_PLATFORM
-		boolean
+		boolean "B"
 endif
 
-if X86_64
+if !A
 	config X86_EXTENDED_PLATFORM
-		boolean
+		tristate "B*"
 endif

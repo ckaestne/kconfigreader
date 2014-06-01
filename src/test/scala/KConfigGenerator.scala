@@ -65,7 +65,7 @@ object KConfigGenerator {
         //randomly make prompt or not
         val promptProbability = rand.nextDouble()
         for (item <- items)
-            item.setPrompt(if (rand.nextDouble() < promptProbability) "1" else "0")
+            item.setPrompt(if (rand.nextDouble() < promptProbability) YTrue() else Not(YTrue()))
 
         //random defaults
         for (item <- items)
@@ -92,7 +92,7 @@ object KConfigGenerator {
             stream.println("config %s".format(item.name))
             //prompt
             stream.print("\tbool")
-            if (item.hasPrompt)
+            if (item.hasPrompt==YTrue())
                 stream.print(" \"prompt %s\"".format(item.name))
             stream.println("")
             //depends

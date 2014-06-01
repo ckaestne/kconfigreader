@@ -25,7 +25,7 @@ import scala.sys.process.Process
 trait DifferentialTesting {
 
     //may be overwritten by specific mixins for specific execution environments
-    def dumpconfTool = "/usr/lib/undertaker/dumpconf %s > %s"
+    def dumpconfTool = "/home/energy/undertaker/scripts/kconfig/dumpconf %s > %s"
     def linuxTreeRoot = "/home/energy/kernel/linux-3.11/"
     def configTool = linuxTreeRoot + "scripts/kconfig/conf --olddefconfig %s"
 

@@ -76,7 +76,7 @@ class KConfigModel() {
 case class Item(val name: String, model: KConfigModel) {
 
     var _type: String = "boolean"
-    var hasPrompt: Boolean = false
+    var hasPrompt: Expr = Not(YTrue())
     private[kconfig] var _default: List[(String, Expr)] = Nil
     var depends: Option[Expr] = None
     var selectedBy: List[(Item, Expr)] = Nil
@@ -91,8 +91,8 @@ case class Item(val name: String, model: KConfigModel) {
 
     import KConfigModel.MODULES
 
-    def setPrompt(p: String) {
-        this.hasPrompt = p == "1"
+    def setPrompt(p: Expr) {
+        this.hasPrompt = p
     }
 
     def setDefault(defaultValue: String, condition: Expr) {
@@ -120,7 +120,8 @@ case class Item(val name: String, model: KConfigModel) {
         }
 
         //invisible options
-        if (!hasPrompt) {
+        if (hasPrompt!=YTrue()) {
+            val nopromptCond = hasPrompt.fexpr_both.not()
             val defaults = getDefaults()
             val default_y = getDefault_y(defaults)
             val default_m = getDefault_m(defaults)
@@ -130,24 +131,23 @@ case class Item(val name: String, model: KConfigModel) {
             //if invisible and off by default, then can only be activated by selects
             // notDefault -> !this | dep1 | dep2 | ... | depn
             if (isTristate) {
-                result ::= MODULES implies (default_y.not implies selectedBy.foldLeft(this.fexpr_y.not)((expr, sel) => (sel._1.fexpr_y and sel._2.fexpr_y) or expr))
-                result ::= MODULES implies (default_m.not implies selectedBy.foldLeft(this.fexpr_m.not)((expr, sel) => (sel._1.fexpr_m and sel._2.fexpr_both) or expr))
-                result ::= MODULES.not implies (default_both.not implies selectedBy.foldLeft(this.fexpr_y.not)((expr, sel) => (sel._1.fexpr_both and sel._2.fexpr_both) or expr))
+                result ::= nopromptCond implies (MODULES implies (default_y.not implies selectedBy.foldLeft(this.fexpr_y.not)((expr, sel) => (sel._1.fexpr_y and sel._2.fexpr_y) or expr)))
+                result ::= nopromptCond implies (MODULES implies (default_m.not implies selectedBy.foldLeft(this.fexpr_m.not)((expr, sel) => (sel._1.fexpr_m and sel._2.fexpr_both) or expr)))
+                result ::= nopromptCond implies (MODULES.not implies (default_both.not implies selectedBy.foldLeft(this.fexpr_y.not)((expr, sel) => (sel._1.fexpr_both and sel._2.fexpr_both) or expr)))
             } else
-                result ::= (default_both.not implies selectedBy.foldLeft(this.fexpr_y.not)((expr, sel) => (sel._1.fexpr_both and sel._2.fexpr_both) or expr))
+                result ::= nopromptCond implies ((default_both.not implies selectedBy.foldLeft(this.fexpr_y.not)((expr, sel) => (sel._1.fexpr_both and sel._2.fexpr_both) or expr)))
 
             //if invisible and on by default, then can only be deactivated by dependencies (== default conditions)
             // default -> this <=> defaultCondition
             if (isTristate) {
-                result ::= (default_y implies this.fexpr_y)
-                result ::= (default_m implies this.fexpr_both)
+                result ::= nopromptCond implies (default_y implies this.fexpr_y)
+                result ::= nopromptCond implies (default_m implies this.fexpr_both)
             } else {
                 var c = (default_both implies this.fexpr_y)
                 //special hack for tristate choices, that are optional if modules are selected but mandatory otherwise
                 if (tristateChoice) c = MODULES.not implies c
-                result ::= c
+                result ::= nopromptCond implies c
             }
-            //                result ::=
         }
 
         if (isTristate) {

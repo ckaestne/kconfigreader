@@ -19,7 +19,7 @@ class KConfigModel() {
     }
 
     def getItem(itemName: String): Item =
-        items.getOrElseUpdate(itemName, Item(itemName))
+        items.getOrElseUpdate(itemName, Item(itemName, this))
 
     def getChoice(choiceName: String): Choice =
         choices.getOrElseUpdate(choiceName, Choice(choiceName))
@@ -73,7 +73,7 @@ class KConfigModel() {
  * @param name
  */
 
-case class Item(val name: String) {
+case class Item(val name: String, model: KConfigModel) {
 
     var _type: String = "boolean"
     var hasPrompt: Boolean = false
@@ -88,6 +88,7 @@ case class Item(val name: String) {
         this._type = _type
         this
     }
+
     import KConfigModel.MODULES
 
     def setPrompt(p: String) {
@@ -121,10 +122,10 @@ case class Item(val name: String) {
         //invisible options
         if (!hasPrompt) {
             val defaults = getDefaults()
-            val default_y = defaults.getOrElse("y", False)
-            val default_m = defaults.getOrElse("m", False)
+            val default_y = getDefault_y(defaults)
+            val default_m = getDefault_m(defaults)
             val default_both = default_y or default_m
-//            println("y=" + default_y + ";m=" + default_m + ";both=" + default_both)
+            //            println("y=" + default_y + ";m=" + default_m + ";both=" + default_both)
 
             //if invisible and off by default, then can only be activated by selects
             // notDefault -> !this | dep1 | dep2 | ... | depn
@@ -140,13 +141,13 @@ case class Item(val name: String) {
             if (isTristate) {
                 result ::= (default_y implies this.fexpr_y)
                 result ::= (default_m implies this.fexpr_both)
-            } else  {
+            } else {
                 var c = (default_both implies this.fexpr_y)
                 //special hack for tristate choices, that are optional if modules are selected but mandatory otherwise
                 if (tristateChoice) c = MODULES.not implies c
                 result ::= c
             }
-//                result ::=
+            //                result ::=
         }
 
         if (isTristate) {
@@ -204,12 +205,31 @@ case class Item(val name: String) {
             result = result.map(v => ("\"" + v._1 + "\"", v._2))
         result
     }
+    def getDefault_y(defaults: Map[String, FeatureExpr]) =
+        defaults.filterKeys(model.items.contains(_)).map(
+            e=>model.getItem(e._1).fexpr_y and e._2
+        ).foldLeft(
+                defaults.getOrElse("y", False))(
+                _ or _
+            )
+
+    def getDefault_m(defaults: Map[String, FeatureExpr]) =
+        defaults.filterKeys(model.items.contains(_)).map(
+            e=>model.getItem(e._1).fexpr_m and e._2
+        ).foldLeft(
+                defaults.getOrElse("m", False))(
+                _ or _
+            )
+
+
+
 
     def isTristate = _type == "tristate"
 
-    lazy val modulename = this.name + "_MODULE"
+    lazy val modulename = if (isTristate) this.name + "_MODULE" else name
     lazy val fexpr_m = FeatureExprFactory.createDefinedExternal(modulename)
 
+    override def toString = "Item "+name
 }
 
 
@@ -237,7 +257,7 @@ case class Choice(val name: String) {
     }
 
     def getConstraints: List[FeatureExpr] = {
-      var result: List[FeatureExpr] = List()
+        var result: List[FeatureExpr] = List()
         //whether choices are mandatory or depend on others are set by the Items abstraction, not here
         //choice -> at least one child
         result ::= (this.fexpr implies (items.foldLeft(False)(_ or _.fexpr_both)))

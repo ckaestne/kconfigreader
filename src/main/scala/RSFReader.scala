@@ -40,6 +40,7 @@ class RSFReader {
             if (command == "Depends") {
                 var str = substrs(2).drop(1).dropRight(1)
                 str = str.replace("<choice>.....", "y")
+                str = str.replace("<choice>=y", "y")
                 str = str.replaceFirst("^CHOICE_\\d+", "y")
                 if (str.endsWith(" && CHOICE_0"))
                     str = str.dropRight(12)

@@ -9,6 +9,8 @@ import scala.sys.process.Process
 
 class RSFReaderTest {
 
+    def Item(s:String) = new Item(s,null)
+
     @Test def testDefault1 {
         val m = Item("m")
         m.setDefault("y", YTrue())

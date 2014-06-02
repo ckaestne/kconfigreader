@@ -1,0 +1,8 @@
+config _DEP
+	tristate "extra dependency around"
+
+if _DEP
+
+source "SOURCETARGET"
+
+endif

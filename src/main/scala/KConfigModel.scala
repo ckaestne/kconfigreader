@@ -11,6 +11,7 @@ private object KConfigModel {
 }
 
 class KConfigModel() {
+    import KConfigModel.MODULES
     val items: collection.mutable.Map[String, Item] = collection.mutable.Map()
     val choices: collection.mutable.Map[String, Choice] = collection.mutable.Map()
 
@@ -26,7 +27,10 @@ class KConfigModel() {
 
     override def toString() = items.toString() + "\n" + choices.toString()
 
-    def getConstraints: List[FeatureExpr] = (items.values.flatMap(_.getConstraints) ++ choices.values.flatMap(_.getConstraints)).toList
+    def getConstraints: List[FeatureExpr] =
+        (items.values.flatMap(_.getConstraints) ++
+            choices.values.flatMap(_.getConstraints)).toList ++
+            (if (!items.contains(MODULES.feature)) List(MODULES.not) else Nil) //if no MODULES item, exclude it explicitly
 
     def getFM: FeatureExpr = {
         //        var f: FeatureExpr = True
@@ -120,8 +124,10 @@ case class Item(val name: String, model: KConfigModel) {
         }
 
         //invisible options
-        if (hasPrompt!=YTrue()) {
-            val nopromptCond = hasPrompt.fexpr_both.not()
+        var promptCondition = hasPrompt
+        if (promptCondition == this.depends.getOrElse(YTrue())) promptCondition == YTrue()
+        if (promptCondition != YTrue()) {
+            val nopromptCond = promptCondition.fexpr_both.not() //the if simplifies the formula in a common case. should be equivalent overall
             val defaults = getDefaults()
             val default_y = getDefault_y(defaults)
             val default_m = getDefault_m(defaults)
@@ -205,9 +211,10 @@ case class Item(val name: String, model: KConfigModel) {
             result = result.map(v => ("\"" + v._1 + "\"", v._2))
         result
     }
+
     def getDefault_y(defaults: Map[String, FeatureExpr]) =
         defaults.filterKeys(model.items.contains(_)).map(
-            e=>model.getItem(e._1).fexpr_y and e._2
+            e => model.getItem(e._1).fexpr_y and e._2
         ).foldLeft(
                 defaults.getOrElse("y", False))(
                 _ or _
@@ -215,13 +222,11 @@ case class Item(val name: String, model: KConfigModel) {
 
     def getDefault_m(defaults: Map[String, FeatureExpr]) =
         defaults.filterKeys(model.items.contains(_)).map(
-            e=>model.getItem(e._1).fexpr_m and e._2
+            e => model.getItem(e._1).fexpr_m and e._2
         ).foldLeft(
                 defaults.getOrElse("m", False))(
                 _ or _
             )
-
-
 
 
     def isTristate = _type == "tristate"
@@ -229,7 +234,7 @@ case class Item(val name: String, model: KConfigModel) {
     lazy val modulename = if (isTristate) this.name + "_MODULE" else name
     lazy val fexpr_m = if (isTristate) FeatureExprFactory.createDefinedExternal(modulename) else False
 
-    override def toString = "Item "+name
+    override def toString = "Item " + name
 }
 
 
@@ -238,7 +243,7 @@ case class Choice(val name: String) {
     var _type: String = "boolean"
     var items: List[Item] = Nil
     lazy val fexpr_y = FeatureExprFactory.createDefinedExternal(name)
-    lazy val fexpr_m = if (isTristate) FeatureExprFactory.createDefinedExternal(name+"_MODULE") else False
+    lazy val fexpr_m = if (isTristate) FeatureExprFactory.createDefinedExternal(name + "_MODULE") else False
     lazy val fexpr_both = fexpr_m or fexpr_y
 
     import KConfigModel.MODULES
@@ -267,7 +272,7 @@ case class Choice(val name: String) {
         result ++= items.map(_.fexpr_both implies this.fexpr_both)
         //children can only select "m" if entire choice is "m"
         if (isTristate)
-          result ++= items.filter(_.isTristate).map(_.fexpr_m implies this.fexpr_m)
+            result ++= items.filter(_.isTristate).map(_.fexpr_m implies this.fexpr_m)
         //all options are mutually exclusive in "y" setting (not in "m")
         result ++=
             (for (a <- items.tails.take(items.size); b <- a.tail) yield (a.head.fexpr_y mex b.fexpr_y))

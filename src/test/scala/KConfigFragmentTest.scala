@@ -211,5 +211,18 @@ class KConfigFragmentTest extends DifferentialTesting {
         checkTestModelBruteForce("src/test/resources/promptif.config")
     }
 
+    @Test def testUndef() {
+        checkTestModelBruteForce("src/test/resources/undef.config")
+    }
+    @Test def testTriBool() {
+        checkTestModelBruteForce("src/test/resources/tribool.config")
+    }
+
+    @Test def testTriBool2() {
+        checkTestModelBruteForce("src/test/resources/tribool2.config")
+    }
+
+
+
 
 }

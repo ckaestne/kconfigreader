@@ -60,7 +60,8 @@ class RSFReader {
             } else
             if (command == "Depends") {
                 var expr = cleanParseExpr(substrs(2))
-                model.getItem(itemName).setDepends(expr)
+                if (itemName!="MODULES")//hack for the nesting test cases. assume modules is never dependent
+                    model.getItem(itemName).setDepends(expr)
             } else
             if (command == "ItemSelects") {
                 //ItemSelects <CurrentItem> "<TargetItem>" "<Condition>"

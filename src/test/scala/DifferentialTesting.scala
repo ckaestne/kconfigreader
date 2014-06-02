@@ -26,8 +26,8 @@ trait DifferentialTesting {
 
     //may be overwritten by specific mixins for specific execution environments
     def dumpconfTool = "/home/energy/undertaker/scripts/kconfig/dumpconf %s > %s"
-    def linuxTreeRoot = "/home/energy/kernel/linux-3.11/"
-    def configTool = linuxTreeRoot + "scripts/kconfig/conf --olddefconfig %s"
+    def linuxTreeRoot = "/home/energy/linux/"
+    def configTool =  "/home/energy/kernel/linux-3.11/scripts/kconfig/conf --olddefconfig %s"
 
 
     /**

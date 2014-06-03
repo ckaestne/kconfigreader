@@ -218,7 +218,7 @@ class KConfigFragmentTest extends DifferentialTesting {
         checkTestModelBruteForce("src/test/resources/tribool.config")
     }
 
-    @Test def testTriBool2() {
+    @Ignore("this is imperative kconfig behavior not occuring in practice")@Test def testTriBool2() {
         checkTestModelBruteForce("src/test/resources/tribool2.config")
     }
 

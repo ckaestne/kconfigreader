@@ -43,7 +43,7 @@ class RSFReader {
 
 
             if (command == "Item") {
-                model.getItem(itemName).setType(substrs(2))
+                model.getItem(itemName).setDefined().setType(substrs(2))
             } else
             if (command == "HasPrompts") {
                 //ignore, just counts the number of prompts which is meaningless

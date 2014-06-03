@@ -26,8 +26,10 @@ trait DifferentialTesting {
 
     //may be overwritten by specific mixins for specific execution environments
     def dumpconfTool = "/home/energy/undertaker/scripts/kconfig/dumpconf %s > %s"
+
     def linuxTreeRoot = "/home/energy/linux/"
-    def configTool =  "/home/energy/kernel/linux-3.11/scripts/kconfig/conf --olddefconfig %s"
+
+    def configTool = "/home/energy/kernel/linux-3.11/scripts/kconfig/conf --olddefconfig %s"
 
 
     /**
@@ -80,10 +82,10 @@ trait DifferentialTesting {
     }
 
 
-    def getModel(workingDir: File, kconfigFile: String, rsfFile:File = null) = {
+    def getModel(workingDir: File, kconfigFile: String, rsfFile: File = null) = {
         assert(workingDir.exists(), "working directory does not exist")
         assert(new File(workingDir, kconfigFile).exists(), "kconfig file does not exist")
-        val rsf = if (rsfFile == null) new File(workingDir,  "tmp.rsf") else rsfFile
+        val rsf = if (rsfFile == null) new File(workingDir, "tmp.rsf") else rsfFile
         rsf.createNewFile()
         Process(dumpconfTool.format(kconfigFile, rsfFile), workingDir).#>(rsf).!
         new RSFReader().readRSF(rsf)
@@ -95,13 +97,13 @@ trait DifferentialTesting {
     //    }
 
     def genAllCombinations(kconfigFile: String, workingDir: File, fm: KConfigModel) {
-        val configs = explodeConfigs(cleanAssignment(fm.getBooleanSymbols.toList.sorted))
+        val configs = explodeConfigs(cleanAssignment(fm.getBooleanSymbols.toList.sorted, fm))
 
         val result: List[(String, Boolean /*expectedValid*/ , Boolean /*correctResult*/ )] = for (config <- configs) yield {
             val partialAssignment = getPartialAssignment(fm.getBooleanSymbols, config.toSet)
             val isSat = (fm.getFM and partialAssignment).isSatisfiable
             val nonBoolean = getNonBoolean(fm, config.toSet)
-            val isValid = isValidConfig(kconfigFile, workingDir, config.toSet, fm.getBooleanSymbols -- config, nonBoolean)
+            val isValid = isValidConfig(kconfigFile, workingDir, config.toSet, fm.getBooleanSymbols -- config, nonBoolean, fm)
             ((config.sorted ++ nonBoolean.map(v => v._1 + "=" + v._2)).mkString(", "), isSat, isValid == isSat)
         }
 
@@ -122,7 +124,7 @@ trait DifferentialTesting {
 
     def genAllCombinationsFromPartial(kconfigFile: String, workingDir: File, fm: KConfigModel, featureSet: Set[String]) {
 
-        val configs = explodeConfigs(cleanAssignment(featureSet))
+        val configs = explodeConfigs(cleanAssignment(featureSet, fm))
 
         for (config <- configs) {
             val partialAssignment = getPartialAssignment(featureSet, config.toSet)
@@ -134,7 +136,7 @@ trait DifferentialTesting {
             }
             val nonBoolean = getNonBoolean(fm, completedConf)
 
-            assert(isValidConfig(kconfigFile, workingDir, completedConf, fm.getBooleanSymbols -- completedConf, nonBoolean) == isSat, "expected but did not find " + isSat)
+            assert(isValidConfig(kconfigFile, workingDir, completedConf, fm.getBooleanSymbols -- completedConf, nonBoolean, fm) == isSat, "expected but did not find " + isSat)
         }
 
 
@@ -170,7 +172,7 @@ trait DifferentialTesting {
 
     def genValidAssignment(kconfigFile: String, workingDir: File, fm: KConfigModel, partialAssignment: FeatureExpr): Set[String] = {
         val r = (fm.getFM and partialAssignment).getSatisfiableAssignment(null, fm.getBooleanSymbols.map(createDefinedExternal(_)), true)
-        cleanAssignment(r.get._1.map(_.feature).toSet)
+        cleanAssignment(r.get._1.map(_.feature).toSet, fm)
     }
 
     def genInvalidAssignment(kconfigFile: String, workingDir: File, fm: KConfigModel, partialAssignment: FeatureExpr): Set[String] = {
@@ -181,7 +183,7 @@ trait DifferentialTesting {
 
         assert(r.isDefined, "SAT solver did not find assignment at all")
 
-        var selected = cleanAssignment(r.get._1.map(_.feature).toSet)
+        var selected = cleanAssignment(r.get._1.map(_.feature).toSet, fm)
         //        var deselected = cleanAssignment(r.get._2.map(_.feature).toSet)
 
         for (f <- partialAssignment.collectDistinctFeatureObjects)
@@ -206,10 +208,11 @@ trait DifferentialTesting {
     //        checkConfig(kconfigFile, workingDir, selected, deselected)
     //    }
 
-    private def cleanAssignment(l: Set[String]): Set[String] =
-        l.filterNot(_.startsWith("CHOICE_"))
-    private def cleanAssignment(l: List[String]): List[String] =
-        l.filterNot(_.startsWith("CHOICE_"))
+    private def cleanAssignment(l: Set[String], model: KConfigModel): Set[String] =
+        cleanAssignment(l.toList, model).toSet
+
+    private def cleanAssignment(l: List[String], model: KConfigModel): List[String] =
+        l.filterNot(_.startsWith("CHOICE_")).filter(model.getItem(_).isDefined)
 
 
     private def explodeConfigs(features: Iterable[String]): List[List[String]] =
@@ -221,8 +224,8 @@ trait DifferentialTesting {
         }
 
 
-    def isValidConfig(kconfigFile: String, workingDir: File, selected: Set[String], deselected: Set[String], nonBoolean: Map[String, String]): Boolean =
-        isValidConfig_(kconfigFile, workingDir, cleanAssignment(selected), cleanAssignment(deselected), nonBoolean)
+    def isValidConfig(kconfigFile: String, workingDir: File, selected: Set[String], deselected: Set[String], nonBoolean: Map[String, String], fm: KConfigModel): Boolean =
+        isValidConfig_(kconfigFile, workingDir, cleanAssignment(selected, fm), cleanAssignment(deselected, fm), nonBoolean)
 
 
     private def isValidConfig_(kconfigFile: String, workingDir: File, selected: Set[String], deselected: Set[String], nonBoolean: Map[String, String]): Boolean = {
@@ -243,7 +246,7 @@ trait DifferentialTesting {
             writer.write("CONFIG_%s=%s\n".format(option, value))
         writer.close()
 
-        println(Process(configTool.format(kconfigFile), workingDir).!!)
+        println(Process(configTool.format(kconfigFile), workingDir, ("ARCH", "x86"), ("KERNELVERSION", "3.11")).!!)
 
         var setConfigs: List[String] = Nil
         var setNonBoolean: Map[String, String] = Map()
@@ -265,32 +268,33 @@ trait DifferentialTesting {
 
         println("found config: " + (setConfigs ++ setNonBoolean.map(v => v._1 + "=" + v._2)).mkString(", "))
 
+        var foundProblem = false
         for (s <- selected)
             if (!setConfigs.contains(s)) {
                 val msg = "config does not match, kconfig-generated configuration removes " + s
                 println(msg)
-                return false
+                foundProblem = true
             }
         for (s <- deselected)
             if (setConfigs.contains(s)) {
                 val msg = "config does not match, kconfig-generated configuration adds " + s
                 println(msg)
-                return false
+                foundProblem = true
             }
         for ((k, v) <- nonBoolean)
             if (setNonBoolean.getOrElse(k, "<does not exist>") != v) {
                 val msg = "config changed nonboolean value %s from %s to %s ".format(k, v, setNonBoolean.getOrElse(k, "<does not exist>"))
                 println(msg)
-                return false
+                foundProblem = true
             }
         for ((k, v) <- setNonBoolean)
             if (!nonBoolean.contains(k)) {
                 val msg = "config introduces additional nonboolean value %s=%s".format(k, v)
                 println(msg)
-                return false
+                foundProblem = true
             }
 
-        return true
+        return !foundProblem
     }
 
 }

@@ -13,8 +13,4 @@ class LVATTest extends DifferentialTesting {
     }
 
 
-    @Test def testDefaultDoubled() {
-        checkTestModelBruteForce("src/test/resources/nest/triselhidden2.config")
-    }
-
 }

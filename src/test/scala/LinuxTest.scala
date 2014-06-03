@@ -10,6 +10,7 @@ import java.net.URI
 import org.sat4j.core.{VecInt, Vec}
 import org.sat4j.specs.IVecInt
 
+@Ignore
 class LinuxTest extends DifferentialTesting {
 
     lazy val x86model = getModel("x86")
@@ -26,7 +27,7 @@ class LinuxTest extends DifferentialTesting {
         getModel(workingDir, kconfigFile(arch), rsfFile)
     }
 
-    @Test
+    @Test@Ignore
     def testLoadLinux() {
         for (arch <- List("x86", "arm")) {
             //        FeatureExprFactory.setDefault(FeatureExprFactory.bdd)
@@ -92,7 +93,7 @@ class LinuxTest extends DifferentialTesting {
     }
 
 
-    @Test
+    @Test@Ignore
     def testAgainstOld {
         val dimacs = "src/test/resources/2.6.33.3-2var.dimacs"
         val fm = createFromDimacsFile_2Var(dimacs)

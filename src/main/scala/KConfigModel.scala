@@ -11,7 +11,9 @@ private object KConfigModel {
 }
 
 class KConfigModel() {
+
     import KConfigModel.MODULES
+
     val items: collection.mutable.Map[String, Item] = collection.mutable.Map()
     val choices: collection.mutable.Map[String, Choice] = collection.mutable.Map()
 
@@ -79,17 +81,25 @@ class KConfigModel() {
 
 case class Item(val name: String, model: KConfigModel) {
 
+
     var _type: String = "boolean"
     var hasPrompt: Expr = Not(YTrue())
     private[kconfig] var _default: List[(String, Expr)] = Nil
     var depends: Option[Expr] = None
     var selectedBy: List[(Item, Expr)] = Nil
+    var isDefined: Boolean = false
+    // an item may be created because it's referenced - when it's never used it is stored as undefined
     lazy val fexpr_y = FeatureExprFactory.createDefinedExternal(name)
     lazy val fexpr_both = if (isTristate) (fexpr_y or fexpr_m) else fexpr_y
     var tristateChoice = false //special hack for choices
 
     def setType(_type: String) = {
         this._type = _type
+        this
+    }
+
+    def setDefined() = {
+        isDefined = true
         this
     }
 

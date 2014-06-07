@@ -1,7 +1,7 @@
 package de.fosd.typechef.kconfig
 
 import scala.Some
-import de.fosd.typechef.featureexpr.{FeatureExprFactory, FeatureExpr}
+import de.fosd.typechef.featureexpr.{SingleFeatureExpr, FeatureExprFactory, FeatureExpr}
 import FeatureExprFactory._
 
 private object KConfigModel {
@@ -50,12 +50,15 @@ class KConfigModel() {
 
     def getItems = items.keys.toSet
 
-    def getBooleanSymbols: Set[String] = {
+    def getBooleanSymbols: Set[SingleFeatureExpr] = {
         val i = items.values.filterNot(_.name startsWith "CHOICE_")
         val boolitems = i.filter(_._type == "boolean")
         val triitems = i.filter(_._type == "tristate")
-        (boolitems.map(_.name) ++ triitems.map(_.name) ++ triitems.map(_.name + "_MODULE")).toSet
+        (boolitems.map(_.name) ++ triitems.map(_.name) ++ triitems.map(_.name + "_MODULE")).toSet.map(FeatureExprFactory.createDefinedExternal)
     }
+
+    def getAllSymbols: Set[SingleFeatureExpr] = getBooleanSymbols ++
+        (for (i <- items.values; if i.isNonBoolean; v <- i.knownValues) yield i.getNonBooleanValue(v))
 
     def getNonBooleanDefaults: Map[Item, List[(String, Expr)]] =
         items.values.filter(Set("integer", "hex", "string") contains _._type).map(i => (i -> i.defaultValues)).toMap
@@ -150,7 +153,7 @@ case class Item(val name: String, model: KConfigModel) {
         this
     }
 
-    def getNonBooleanValue(value: String): FeatureExpr = FeatureExprFactory.createDefinedExternal(name + "=" + value)
+    def getNonBooleanValue(value: String): SingleFeatureExpr = FeatureExprFactory.createDefinedExternal(name + "=" + value)
 
     import KConfigModel.MODULES
 
@@ -218,13 +221,13 @@ case class Item(val name: String, model: KConfigModel) {
             if (isTristate) {
                 result ::= nopromptCond implies (default_y implies this.fexpr_y)
                 result ::= nopromptCond implies (default_m implies this.fexpr_both)
-            } else if (!isNonBoolean)/*IF type == boolean*/ {
+            } else if (!isNonBoolean) /*IF type == boolean*/ {
                 var c = (default_both implies this.fexpr_y)
                 //special hack for tristate choices, that are optional if modules are selected but mandatory otherwise
                 if (tristateChoice) c = MODULES.not implies c
                 result ::= nopromptCond implies c
             } else {
-                for ((defaultvalue, cond)<-defaults) {
+                for ((defaultvalue, cond) <- defaults) {
                     assert(knownValues contains defaultvalue)
                     val f = getNonBooleanValue(defaultvalue)
                     result ::= nopromptCond implies (cond implies f)
@@ -254,7 +257,7 @@ case class Item(val name: String, model: KConfigModel) {
         }
 
         //nonboolean features cannot be "n" if there is a prompt
-        if (isNonBoolean && (knownValues contains "n")){
+        if (isNonBoolean && (knownValues contains "n")) {
             result ::= promptCondition.fexpr_both implies getNonBooleanValue("n").not
         }
 

@@ -2,7 +2,7 @@ package de.fosd.typechef.kconfig
 
 import org.junit._
 import java.io._
-import de.fosd.typechef.featureexpr.{FeatureExprFactory, FeatureExpr}
+import de.fosd.typechef.featureexpr.{SingleFeatureExpr, FeatureExprFactory, FeatureExpr}
 import FeatureExprFactory._
 import scala._
 import scala.sys.process.Process
@@ -69,17 +69,17 @@ trait DifferentialTesting {
      * is no guarantee that it will actually find a feature assignment
      * for features outside the subset.
      */
-    //    def checkTestModel(kconfigFile: String, workingDir: File,
-    //                       features: Set[String]) {
-    //
-    //        val model = getModel(workingDir, kconfigFile)
-    //
-    //        println("**********\n" +
-    //            "** " + kconfigFile)
-    //        println(model.getConstraints.mkString("\n"))
-    //
-    //        genAllCombinationsFromPartial(kconfigFile, workingDir, model, features)
-    //    }
+    def checkTestModel(kconfigFile: String, workingDir: File,
+                       features: Set[String]) {
+
+        val model = getModel(workingDir, kconfigFile)
+
+        println("**********\n" +
+            "** " + kconfigFile)
+        println(model.getConstraints.mkString("\n"))
+
+        genAllCombinationsFromPartial(kconfigFile, workingDir, model, features)
+    }
 
 
     def getModel(workingDir: File, kconfigFile: String, rsfFile: File = null) = {
@@ -106,6 +106,10 @@ trait DifferentialTesting {
             (printConfig(config), isSat, isValid == isSat)
         }
 
+        checkResult(result)
+    }
+
+    def checkResult(result: List[(String, Boolean, Boolean)]) {
         System.err.flush()
         System.out.flush()
         println("!!!!!!!!!!!!!!!!!!")
@@ -130,25 +134,6 @@ trait DifferentialTesting {
         else v._1 + "=" + v._2
     }
 
-    //    def genAllCombinationsFromPartial(kconfigFile: String, workingDir: File, fm: KConfigModel, featureSet: Set[String]) {
-    //
-    //        val configs = explodeConfigs(cleanAssignment(featureSet, fm))
-    //
-    //        for (config <- configs) {
-    //            val partialAssignment = getPartialAssignment(featureSet, config.toSet)
-    //            val isSat = (fm.getFM and partialAssignment).isSatisfiable
-    //            val completedConf = if (isSat) {
-    //                genValidAssignment(kconfigFile, workingDir, fm, partialAssignment)
-    //            } else {
-    //                genInvalidAssignment(kconfigFile, workingDir, fm, partialAssignment)
-    //            }
-    //            val nonBoolean = getNonBoolean(fm, completedConf)
-    //
-    //            assert(isValidConfig(kconfigFile, workingDir, completedConf, fm.getBooleanSymbols -- completedConf, nonBoolean, fm) == isSat, "expected but did not find " + isSat)
-    //        }
-    //
-    //
-    //    }
 
     def getNonBoolean(fm: KConfigModel, assignedValues: Set[String]): Map[String, String] = {
         var result = Map[String, String]()
@@ -185,7 +170,7 @@ trait DifferentialTesting {
                 else expr = expr andNot item.fexpr_y
             } else {
                 //nonboolean
-                val v=if (item._type=="string" && value!="n") value.drop(1).dropRight(1) else value //get rid of the quotes for strings
+                val v = if (item._type == "string" && value != "n") value.drop(1).dropRight(1) else value //get rid of the quotes for strings
                 expr = expr and item.getNonBooleanValue(v)
             }
         }
@@ -193,34 +178,6 @@ trait DifferentialTesting {
         expr
     }
 
-    //    def genValidAssignment(kconfigFile: String, workingDir: File, fm: KConfigModel, partialAssignment: FeatureExpr): Set[String] = {
-    //        val r = (fm.getFM and partialAssignment).getSatisfiableAssignment(null, fm.getBooleanSymbols.map(createDefinedExternal(_)), true)
-    //        cleanAssignment(r.get._1.map(_.feature).toSet, fm)
-    //    }
-
-    //    def genInvalidAssignment(kconfigFile: String, workingDir: File, fm: KConfigModel, partialAssignment: FeatureExpr): Set[String] = {
-    //        //get any assignment for the rest and overwrite the given variables
-    //        //this will not always find out whether the assignment is actually permissable
-    //        // (it may be permissable with another base assignment for the other options), but we can try
-    //        val r = fm.getFM.getSatisfiableAssignment(null, fm.getBooleanSymbols.map(createDefinedExternal(_)), true)
-    //
-    //        assert(r.isDefined, "SAT solver did not find assignment at all")
-    //
-    //        var selected = cleanAssignment(r.get._1.map(_.feature).toSet, fm)
-    //        //        var deselected = cleanAssignment(r.get._2.map(_.feature).toSet)
-    //
-    //        for (f <- partialAssignment.collectDistinctFeatureObjects)
-    //            if ((partialAssignment and f).isSatisfiable) {
-    //                selected = selected + f.feature
-    //                //                deselected = deselected - f.feature
-    //            } else {
-    //                selected = selected - f.feature
-    //                //                deselected = deselected + f.feature
-    //            }
-    //
-    //
-    //        selected
-    //    }
 
     //    def checkConfig_(kconfigFile: String, workingDir: File, r: Option[Pair[List[SingleFeatureExpr], List[SingleFeatureExpr]]]) {
     //        assert(r.isDefined, "SAT solver did not find assignment")
@@ -234,9 +191,6 @@ trait DifferentialTesting {
     //    private def cleanAssignment(l: Set[String], model: KConfigModel): Set[String] =
     //        cleanAssignment(l.toList, model).toSet
 
-    //    private def cleanAssignment(l: List[String], model: KConfigModel): List[String] =
-    //        l.filterNot(_.startsWith("CHOICE_")).filter(s => s.endsWith("_MODULE") || model.getItem(s).isDefined)
-
 
     private def explodeConfigs(features: Iterable[Item]): List[Map[String, String]] =
         if (features.isEmpty) List(Map())
@@ -244,8 +198,8 @@ trait DifferentialTesting {
             val r = explodeConfigs(features.tail)
             val f = features.head
             var values = f.knownValues.toList
-            if (f._type=="string")
-                values = values.map(s=>if (s!="n") "\""+s+"\"" else s)
+            if (f._type == "string")
+                values = values.map(s => if (s != "n") "\"" + s + "\"" else s)
             assert(!values.isEmpty)
 
             values.flatMap(value =>
@@ -306,6 +260,99 @@ trait DifferentialTesting {
             }
 
         return !foundProblem
+    }
+
+
+    /** ************
+      * partial
+      */
+
+    def genAllCombinationsFromPartial(kconfigFile: String, workingDir: File, fm: KConfigModel, featureSet: Set[String]) {
+        def cleanAssignment(l: Set[String], model: KConfigModel): Set[String] =
+            l.filterNot(_.startsWith("CHOICE_")).filter(s => s.endsWith("_MODULE") || model.getItem(s).isDefined)
+
+        val configs = explodeConfigs(cleanAssignment(featureSet, fm).map(fm.getItem))
+
+        val result: List[(String, Boolean /*expectedValid*/ , Boolean /*correctResult*/ )] = for (config <- configs) yield {
+            val partialAssignment = getPartialAssignment(fm, config)
+            val isSat = (fm.getFM and partialAssignment).isSatisfiable
+            val completedConf = if (isSat) {
+                genValidAssignment(kconfigFile, workingDir, fm, partialAssignment)
+            } else {
+                genInvalidAssignment(kconfigFile, workingDir, fm, partialAssignment)
+            }
+
+            val isValid = isValidConfig(kconfigFile, workingDir, completedConf)
+            assert(isValid == isSat)
+            (printConfig(config), isSat, isValid == isSat)
+        }
+
+        checkResult(result)
+
+    }
+
+
+    def genValidAssignment(kconfigFile: String, workingDir: File, fm: KConfigModel, partialAssignment: FeatureExpr): Map[String, String] = {
+        val r = (fm.getFM and partialAssignment).getSatisfiableAssignment(null, fm.getAllSymbols, true)
+        satAssignmentToConfig(r, fm)
+    }
+
+    def genInvalidAssignment(kconfigFile: String, workingDir: File, fm: KConfigModel, partialAssignment: FeatureExpr): Map[String, String] = {
+        //get any assignment for the rest and overwrite the given variables
+        //this will not always find out whether the assignment is actually permissable
+        // (it may be permissable with another base assignment for the other options), but we can try
+        var r = fm.getFM.getSatisfiableAssignment(null, fm.getAllSymbols, true)
+        assert(r.isDefined)
+        var selected = r.get._1.toSet
+        var deselected = r.get._2.toSet
+
+        for (f <- partialAssignment.collectDistinctFeatureObjects)
+            if ((partialAssignment and f).isSatisfiable) {
+                selected += f
+                deselected -= f
+            } else {
+                selected -= f
+                deselected += f
+            }
+
+        satAssignmentToConfig(Some((selected.toList, deselected.toList)), fm)
+
+    }
+
+
+    private def satAssignmentToConfig(r: Option[(List[SingleFeatureExpr], List[SingleFeatureExpr])], fm: KConfigModel): Map[String, String] = {
+        assert(r.isDefined)
+
+        val (enabled, disabled) = r.get
+
+        var result: Map[String, String] = Map()
+        for (f <- disabled) {
+            if (f.feature startsWith "CHOICE") {
+                /*nothing*/
+            }
+            else if (f.feature.endsWith("_MODULE"))
+                result += (f.feature.dropRight(7) -> "n")
+            else if (f.feature contains "=")
+                result += (f.feature.take(f.feature.indexOf("=")) -> "n")
+            else
+                result += (f.feature -> "n")
+        }
+        for (f <- enabled) {
+            if (f.feature startsWith "CHOICE") {
+                /*nothing*/
+            }
+            else if (f.feature.endsWith("_MODULE"))
+                result += (f.feature.dropRight(7) -> "m")
+            else if (f.feature contains "=") {
+                val k = f.feature.take(f.feature.indexOf("="))
+                var v = f.feature.substring(f.feature.indexOf("=") + 1)
+                if (fm.getItem(k)._type == "string" && v != "n")
+                    v = "\"" + v + "\""
+                result += (k -> v)
+            } else
+                result += (f.feature -> "y")
+        }
+        result
     }
 
 }

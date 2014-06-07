@@ -190,12 +190,7 @@ class KConfigFragmentTest extends DifferentialTesting {
     @Test def testDepExtra3() {
         checkTestModelBruteForce("src/test/resources/depextra3.config")
     }
-    @Ignore @Test def testNumDep() {
-        checkTestModelBruteForce("src/test/resources/numdep.config")
-    }
-    @Ignore @Test def testStringDep() {
-        checkTestModelBruteForce("src/test/resources/stringdep.config")
-    }
+
 
     @Test def testChoiceDep() {
         checkTestModelBruteForce("src/test/resources/choicedep.config")

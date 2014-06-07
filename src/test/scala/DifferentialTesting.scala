@@ -48,6 +48,7 @@ trait DifferentialTesting {
         println("**********\n" +
             "** " + kconfigFile)
         println(model.getConstraints.mkString("\n"))
+//        model.items.values.map(i=>println(i.name+": "+i.knownValues.mkString(", ")))
 
         genAllCombinations(kconfigFile, workingDir, model)
     }
@@ -230,7 +231,7 @@ trait DifferentialTesting {
         val EnabledConfig = "^CONFIG_([a-zA-Z0-9_]+)=y$".r
         val ModuleConfig = "^CONFIG_([a-zA-Z0-9_]+)=m$".r
         val NonBoolean = "^CONFIG_([a-zA-Z0-9_]+)=(\\d+)$".r
-        val NonBooleanHex = "^CONFIG_([a-zA-Z0-9_]+)=(0x\\d+)$".r
+        val NonBooleanHex = "^CONFIG_([a-zA-Z0-9_]+)=(0x[A-Fa-f0-9]+)$".r
         val NonBooleanStr = "^CONFIG_([a-zA-Z0-9_]+)=(\".*\")$".r
         for (l <- io.Source.fromFile(configFile).getLines() if !(l.startsWith("#"))) {
             l match {
@@ -245,8 +246,9 @@ trait DifferentialTesting {
 
         println("found config: " + printConfig(foundConfig))
 
+        val blacklist = Set("ARCH", "KERNELVERSION") //special features, ignored here
         var foundProblem = false
-        for ((k, v) <- config)
+        for ((k, v) <- config; if !(blacklist contains k))
             if (foundConfig.getOrElse(k, "n") != v) {
                 val msg = "kconfig changed %s from '%s' to '%s'".format(k, v, foundConfig.getOrElse(k, "n"))
                 println(msg)

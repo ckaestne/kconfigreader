@@ -1,4 +1,5 @@
 package de.fosd.typechef.kconfig
+
 import org.junit._
 
 /**
@@ -11,11 +12,16 @@ class KConfigNonboolTest extends DifferentialTesting {
         checkTestModelBruteForce("src/test/resources/nonbool.config")
     }
 
-     @Test def testNumDep() {
+    @Test def testNumDep() {
         checkTestModelBruteForce("src/test/resources/numdep.config")
     }
+
     @Test def testStringDep() {
         checkTestModelBruteForce("src/test/resources/stringdep.config")
+    }
+
+    @Test def testNumDep2() {
+        checkTestModelBruteForce("src/test/resources/numdep2.config")
     }
 
 }

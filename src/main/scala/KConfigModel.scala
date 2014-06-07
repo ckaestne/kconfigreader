@@ -330,6 +330,8 @@ case class Item(val name: String, model: KConfigModel) {
                 case e if isTristate /*any expression is evaluated to y/n/m*/ =>
                     updateResult("y", And(v, expr).fexpr_y)
                     updateResult("m", And(v, expr).fexpr_m)
+                case Name(i) if isNonBoolean /*reference to another nonboolean item*/=>
+                    //TODO support references to values of other items
                 case e /*any expression is evaluated to y/n/m*/ =>
                     updateResult("y", And(v, expr).fexpr_both)
             }

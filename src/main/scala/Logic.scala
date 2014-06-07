@@ -23,10 +23,8 @@ abstract class Expr {
     def fexpr_both: FeatureExpr = fexpr_m or fexpr_y
 }
 
-sealed trait Symbol {
+sealed trait Symbol extends Expr {
     val fexpr2: FeatureExpr
-
-    def toExpr: Expr
 
     def kexpr: String
 
@@ -35,20 +33,17 @@ sealed trait Symbol {
     def eval(assignedValues: Map[String, String]): String
 }
 
-case class ConstantSymbol(v: String) extends Symbol {
-    override def toExpr: Expr = v match {
-        case "y" => YTrue()
-        case "m" => MTrue()
-        case _ => Not(YTrue()) //'n'
-    }
+case class ConstantSymbol(v: String) extends Expr with Symbol {
 
     override def kexpr: String = "'" + v + "'"
 
-    def eval(assignedValues: Set[String]): Boolean = false
+    def eval(assignedValues: Set[String]): Boolean = v=="y"
 
     def eval(assignedValues: Map[String, String]): String = v
 
     lazy val fexpr2: FeatureExpr = False
+    override val fexpr_y: FeatureExpr = if (v=="y") True else False
+    override val fexpr_m: FeatureExpr = if (v=="m") True else False
 }
 
 case class Name(n: Item) extends Expr with Symbol {
@@ -63,7 +58,6 @@ case class Name(n: Item) extends Expr with Symbol {
     lazy val fexpr_y: FeatureExpr = n.fexpr_y
     lazy val fexpr_m: FeatureExpr = if (n.isTristate) n.fexpr_m else False
 
-    override def toExpr: Expr = this
 }
 
 case class And(a: Expr, b: Expr) extends Expr {

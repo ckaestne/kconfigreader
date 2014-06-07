@@ -69,7 +69,7 @@ object KConfigGenerator {
 
         //random defaults
         for (item <- items)
-            item.setDefault("y", genRandomExpr(0.2))
+            item.setDefault(ConstantSymbol("y"), genRandomExpr(0.2))
 
         //random dependencies
         for (item <- items)

@@ -58,7 +58,44 @@ class KConfigModel() {
     }
 
     def getNonBooleanDefaults: Map[Item, List[(String, Expr)]] =
-        items.values.filter(Set("integer", "hex", "string") contains _._type).map(i => (i -> i.default)).toMap
+        items.values.filter(Set("integer", "hex", "string") contains _._type).map(i => (i -> i.defaultValues)).toMap
+
+    /**
+     * this is a global operation that finds possible values for all items
+     * should be called after all items are known and before computing constraints
+     *
+     * known values come from defaults and from literals in comparisons
+     */
+    def findKnownValues {
+        for (item <- items.values) {
+            item.knownValues = item._type match {
+                case "boolean" => Set("y", "n")
+                case "tristate" => Set("y", "m", "n")
+                case "integer" => if (item.default.isEmpty) Set("0") else Set()
+                case "hex" => if (item.default.isEmpty) Set("0x0") else Set()
+                case "string" => if (item.default.isEmpty) Set("") else Set()
+            }
+            item.knownValues ++= item.getDefaults().keys
+        }
+
+
+        def findValues(e: Expr): Unit = e match {
+            case And(a, b) => findValues(a); findValues(b)
+            case Or(a, b) => findValues(a); findValues(b)
+            case Not(a) => findValues(a)
+            case Equals(Name(n), ConstantSymbol(v)) =>
+                n.knownValues += v
+            case Equals(ConstantSymbol(v), Name(n)) =>
+                n.knownValues += v
+            case _ =>
+        }
+
+        for (item <- items.values) {
+            item.default.map(s => findValues(s._2))
+            item.selectedBy.map(s => findValues(s._2))
+            item.depends.map(s => findValues(s))
+        }
+    }
 }
 
 /**
@@ -84,17 +121,20 @@ case class Item(val name: String, model: KConfigModel) {
 
     var _type: String = "boolean"
     var hasPrompt: Expr = Not(YTrue())
-    private[kconfig] var _default: List[(String, Expr)] = Nil
+    private[kconfig] var default: List[(Expr/*value*/, Expr/*visible*/)] = Nil
     var depends: Option[Expr] = None
     var selectedBy: List[(Item, Expr)] = Nil
     var isDefined: Boolean = false
     // an item may be created because it's referenced - when it's never used it is stored as undefined
     lazy val fexpr_y = FeatureExprFactory.createDefinedExternal(name)
     lazy val fexpr_both = if (isTristate) (fexpr_y or fexpr_m) else fexpr_y
-    var tristateChoice = false //special hack for choices
+    var tristateChoice = false
+    //special hack for choices
+    var knownValues: Set[String] = Set()
 
     def setType(_type: String) = {
         this._type = _type
+
         this
     }
 
@@ -109,8 +149,8 @@ case class Item(val name: String, model: KConfigModel) {
         this.hasPrompt = p
     }
 
-    def setDefault(defaultValue: String, condition: Expr) {
-        this._default = (defaultValue, condition) :: this._default
+    def setDefault(defaultValue: Expr, condition: Expr) {
+        this.default ::= (defaultValue, condition)
     }
 
     def setDepends(s: Expr) {
@@ -183,9 +223,39 @@ case class Item(val name: String, model: KConfigModel) {
     } else Nil
 
     /**
+     * do not rely on this, just an approximation
+     * @return
+     */
+    def defaultValues: List[(String, Expr)] = {
+        var result: List[(String, Expr)] = Nil
+
+
+        for ((v, expr) <- default.reverse) {
+            v match {
+                case ConstantSymbol("y") if isTristate =>
+                    result ::= ("y", And(YTrue(),expr))
+                    result ::= ("m", And(MTrue(),expr))
+                case ConstantSymbol(s) =>
+                    result ::= (s, expr)
+                case e if isTristate /*any expression is evaluated to y/n/m*/ =>
+                    result ::=("y", And(YTrue(),And(v, expr)))
+                    result ::=("m", And(MTrue(),And(v, expr)))
+                case e /*any expression is evaluated to y/n/m*/ =>
+                    result ::= ("y", And(v, expr))
+            }
+        }
+        result
+    }
+
+
+        /**
      * returns the different defaults and their respective conditions
      *
      * this evaluates conditions to booleans(!), i.e., m and y are both considered true
+     *
+     * note that his behaves different for booleans and nonbooleans. for nonbooleans
+     * the default is typically a constantsymbol whereas for booleans it is
+     * y or n (or m)
      */
     def getDefaults(): Map[String, FeatureExpr] = {
         var result: Map[String, FeatureExpr] = Map()
@@ -198,29 +268,23 @@ case class Item(val name: String, model: KConfigModel) {
             covered = covered or newCond
         }
 
-        for ((v, expr) <- _default.reverse) {
-            if (v == "y" && isTristate) {
-                updateResult(v, expr.fexpr_y)
-                updateResult("m", expr.fexpr_m)
-            } else
-                updateResult(v, expr.fexpr_both)
-
+        for ((v, expr) <- default.reverse) {
+            v match {
+                case ConstantSymbol("y") if isTristate =>
+                    updateResult("y", expr.fexpr_y)
+                    updateResult("m", expr.fexpr_m)
+                case ConstantSymbol(s) =>
+                    updateResult(s, expr.fexpr_both)
+                case e if isTristate /*any expression is evaluated to y/n/m*/ =>
+                    updateResult("y", And(v, expr).fexpr_y)
+                    updateResult("m", And(v, expr).fexpr_m)
+                case e /*any expression is evaluated to y/n/m*/ =>
+                    updateResult("y", And(v, expr).fexpr_both)
+            }
         }
         result
     }
 
-    def default: List[(String, Expr)] = {
-        var result = _default
-        //        if (_type == "integer" && hasPrompt)
-        //            result = ("0", ETrue()) :: result
-        //        if (_type == "hex" && hasPrompt)
-        //            result = ("0x0", ETrue()) :: result
-        //        if (_type == "string" && hasPrompt)
-        //            result = ("", ETrue()) :: result
-        if (_type == "string")
-            result = result.map(v => ("\"" + v._1 + "\"", v._2))
-        result
-    }
 
     def getDefault_y(defaults: Map[String, FeatureExpr]) =
         defaults.filterKeys(model.items.contains(_)).map(

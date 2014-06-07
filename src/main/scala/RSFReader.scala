@@ -54,7 +54,7 @@ class RSFReader {
             } else
             if (command == "Default") {
                 //Depends <CurrentItem> "<DefaultValue>" "<Condition>"
-                var defaultValue = substrs(2).drop(1).dropRight(1)
+                var defaultValue = parser.parseExpr(substrs(2).drop(1).dropRight(1))
                 val condition = parser.parseExpr(substrs(3).drop(1).dropRight(1))
                 model.getItem(itemName).setDefault(defaultValue, condition)
             } else
@@ -85,7 +85,7 @@ class RSFReader {
             val choiceItem = model.getItem(choice.name)
             choiceItem.tristateChoice = choice.isTristate
             choiceItem.setPrompt(if (choice.required == "optional") YTrue() else Not(YTrue()))
-            choiceItem._default = List(("y", choiceItem.depends.getOrElse(YTrue())))
+            choiceItem.default = List((ConstantSymbol("y"), choiceItem.depends.getOrElse(YTrue())))
 
         }
 
@@ -141,14 +141,15 @@ class RSFReader {
             "!" ~> bool ^^ (Not(_)) |
                 ("(" ~> expr <~ ")") |
                 symbol ~ opt(("=" | "!=") ~ symbol) ^^ {
-                    case s ~ None => s.toExpr
+                    case s ~ None => s
                     case a ~ Some(op ~ b) =>
                         val r = Equals(a, b)
                         if (op == "!-") Not(r) else r
                 }
 
         def symbol: Parser[Symbol] =
-            ID ^^ {
+            ("y"|"m"|"n") ^^ {s=>ConstantSymbol(s)} |
+                ID ^^ {
                 s =>
                     try {
                         s.toInt

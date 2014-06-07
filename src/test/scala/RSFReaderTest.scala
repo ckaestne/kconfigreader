@@ -13,14 +13,14 @@ class RSFReaderTest {
 
     @Test def testDefault1 {
         val m = Item("m")
-        m.setDefault("y", YTrue())
+        m.setDefault(ConstantSymbol("y"), YTrue())
 
         assert(m.getDefaults()("y") equivalentTo True)
     }
 
     @Test def testDefault2 {
         val m = Item("m")
-        m.setDefault("n", YTrue())
+        m.setDefault(ConstantSymbol("n"), YTrue())
 
         assert(m.getDefaults().getOrElse("y",False) equivalentTo False)
     }
@@ -32,15 +32,15 @@ class RSFReaderTest {
 
     @Test def testDefault3 {
         val m = Item("m")
-        m.setDefault("y", Name(Item("A")))
+        m.setDefault(ConstantSymbol("y"), Name(Item("A")))
 
         assert(m.getDefaults()("y") equivalentTo fa)
     }
 
     @Test def testDefault4 {
         val m = Item("m")
-        m.setDefault("y", Name(Item("A")))
-        m.setDefault("n", Name(Item("B")))
+        m.setDefault(ConstantSymbol("y"), Name(Item("A")))
+        m.setDefault(ConstantSymbol("n"), Name(Item("B")))
 
         assert(m.getDefaults()("y") equivalentTo fa)
     }
@@ -48,17 +48,17 @@ class RSFReaderTest {
 
     @Test def testDefault5 {
         val m = Item("m")
-        m.setDefault("y", Name(Item("A")))
-        m.setDefault("n",  YTrue())
+        m.setDefault(ConstantSymbol("y"), Name(Item("A")))
+        m.setDefault(ConstantSymbol("n"),  YTrue())
 
         assert(m.getDefaults()("y") equivalentTo fa)
     }
 
     @Test def testDefault6 {
         val m = Item("m")
-        m.setDefault("y", Name(Item("A")))
-        m.setDefault("n", Name(Item("B")))
-        m.setDefault("y", Name(Item("C")))
+        m.setDefault(ConstantSymbol("y"), Name(Item("A")))
+        m.setDefault(ConstantSymbol("n"), Name(Item("B")))
+        m.setDefault(ConstantSymbol("y"), Name(Item("C")))
 
         assert(m.getDefaults()("y") equivalentTo (fa or (fc andNot fb)))
     }
@@ -66,9 +66,9 @@ class RSFReaderTest {
 
     @Test def testDefault7 {
         val m = Item("m")
-        m.setDefault("y", Name(Item("A")))
-        m.setDefault("n",  YTrue())
-        m.setDefault("y", Name(Item("B")))
+        m.setDefault(ConstantSymbol("y"), Name(Item("A")))
+        m.setDefault(ConstantSymbol("n"),  YTrue())
+        m.setDefault(ConstantSymbol("y"), Name(Item("B")))
 
         assert(m.getDefaults()("y") equivalentTo fa)
     }

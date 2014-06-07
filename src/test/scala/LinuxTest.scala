@@ -33,19 +33,22 @@ class LinuxTest extends DifferentialTesting {
         for (arch <- List("x86", "arm")) {
             //        FeatureExprFactory.setDefault(FeatureExprFactory.bdd)
             val model = getModel(arch)
-            val allconstraints = model.getConstraints
 
-            assert(allconstraints.forall(_.isSatisfiable()), "extracted constraint is not satisfiable")
-            assert(allconstraints.reduce(_ and _).isSatisfiable(), "extracted model is not satisfiable")
+            model.findKnownValues
 
+            for (item<-model.items.values) {
+                println(item.name+" -> "+item.knownValues.mkString(", "))
 
-            writeModel(arch, workingDir, model)
+            }
 
-            //        println(".")
-            //        var count = 0
-            //        allconstraints.map(c=>{if (c.collectDistinctFeatures.size>16) println(c.collectDistinctFeatures.size) else c.asInstanceOf[SATFeatureExpr].toCNF()})
+//            val allconstraints = model.getConstraints
+//
+//            assert(allconstraints.forall(_.isSatisfiable()), "extracted constraint is not satisfiable")
+//            assert(allconstraints.reduce(_ and _).isSatisfiable(), "extracted model is not satisfiable")
+//
+//
+//            writeModel(arch, workingDir, model)
 
-            //            genAllCombinationsFromPartial(kconfigFile, workingDir, model, Set("FEATURE_CHECK_UNICODE_IN_ENV", "UNICODE_SUPPORT", "UNICODE_USING_LOCALE"))
         }
     }
 

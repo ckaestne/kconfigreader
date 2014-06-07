@@ -212,7 +212,7 @@ trait DifferentialTesting {
         cleanAssignment(l.toList, model).toSet
 
     private def cleanAssignment(l: List[String], model: KConfigModel): List[String] =
-        l.filterNot(_.startsWith("CHOICE_")).filter(model.getItem(_).isDefined)
+        l.filterNot(_.startsWith("CHOICE_")).filter(s=> s.endsWith("_MODULE") || model.getItem(s).isDefined)
 
 
     private def explodeConfigs(features: Iterable[String]): List[List[String]] =
@@ -254,15 +254,15 @@ trait DifferentialTesting {
         val ModuleConfig = "^CONFIG_([a-zA-Z0-9_]+)=m$".r
         val NonBoolean = "^CONFIG_([a-zA-Z0-9_]+)=(\\d+)$".r
         val NonBooleanHex = "^CONFIG_([a-zA-Z0-9_]+)=(0x\\d+)$".r
-        val NonBooleanStr = "^CONFIG_([a-zA-Z0-9_]+)=(\".*\")$".r
-        for (l <- io.Source.fromFile(configFile).getLines()) {
+        val NonBooleanStr = "^CONFIG_([a-zA-Z0-9_]+)=\"(.*)\"$".r
+        for (l <- io.Source.fromFile(configFile).getLines() if !(l.startsWith("#"))) {
             l match {
                 case EnabledConfig(c) => setConfigs ::= c
                 case ModuleConfig(c) => setConfigs ::= c + "_MODULE"
                 case NonBoolean(c, v) => setNonBoolean += (c -> v)
                 case NonBooleanHex(c, v) => setNonBoolean += (c -> v)
                 case NonBooleanStr(c, v) => setNonBoolean += (c -> v)
-                case _ =>
+                case _ => println("unmatched .config line " + l)
             }
         }
 

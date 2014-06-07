@@ -34,7 +34,7 @@ class RSFReader {
                 if (parentChoice.isDefined) {
                     str = str.replace("<choice>.....", "y")
                     str = str.replaceFirst("^CHOICE_\\d+", "y")
-                    str = str.replace("<choice>=y", parentChoice.get.name + "=y")//this should actually be preserved because it makes a difference in tristate choices
+                    str = str.replace("<choice>=y", parentChoice.get.name + "=y") //this should actually be preserved because it makes a difference in tristate choices
                 }
                 if (str.endsWith(" && CHOICE_0"))
                     str = str.dropRight(12)
@@ -60,7 +60,7 @@ class RSFReader {
             } else
             if (command == "Depends") {
                 var expr = cleanParseExpr(substrs(2))
-                if (itemName!="MODULES")//hack for the nesting test cases. assume modules is never dependent
+                if (itemName != "MODULES") //hack for the nesting test cases. assume modules is never dependent
                     model.getItem(itemName).setDepends(expr)
             } else
             if (command == "ItemSelects") {
@@ -140,41 +140,36 @@ class RSFReader {
         def bool: Parser[Expr] =
             "!" ~> bool ^^ (Not(_)) |
                 ("(" ~> expr <~ ")") |
-                //            "InvalidExpression()" ^^ (_ => featureFactory.False) |
-                //            (("definedEx" | "defined" | "def") ~ "(" ~> ID <~ ")") ^^ {
-                //                toFeature(_)
-                //            } |
-                //            ("1" | "true" | "True" | "TRUE") ^^ {
-                //                x => featureFactory.True
-                //            } |
-                //            ("0" | "false" | "False" | "FALSE") ^^ {
-                //                x => featureFactory.False
-                //            } |
-                "y" ^^ { _ => YTrue()} |
-                "n" ^^ { _ => Not(YTrue())} |
-                "m" ^^ { _ => MTrue()} |
-                //                Int ^^ {_ => YTrue()} | //TODO accepting numbers/strings not supported yet
-                ID ~ opt(("=" | "!=") ~ opt(bool)) ^^ {
-                    case n ~ v =>
-                        try {
-                            n.toInt
-                            //if that's successful, that's not a supported ID right now
-                            YTrue()
-                        } catch {
-                            case e: NumberFormatException =>
-
-                                val r = Name(fm.getItem(n))
-                                if (v.isDefined && v.get._2.isDefined) {
-                                    //TODO handle case of empty strings properly
-                                    val s = Equals(r, v.get._2.get)
-                                    if (v.get._1 == "!=") Not(s) else s
-                                } else r
-                        }
+                symbol ~ opt(("=" | "!=") ~ symbol) ^^ {
+                    case s ~ None => s.toExpr
+                    case a ~ Some(op ~ b) =>
+                        val r = Equals(a, b)
+                        if (op == "!-") Not(r) else r
                 }
+
+        def symbol: Parser[Symbol] =
+            ID ^^ {
+                s =>
+                    try {
+                        s.toInt
+                        //if that's successful, it's an integer constant
+                        ConstantSymbol(s)
+                    } catch {
+                        case e: NumberFormatException =>
+                                                                                                                                                                                                                                                                                                                                                                                                                                        Name(fm.getItem(s))
+                    }
+
+            } |
+                "'" ~> anychar <~ "'" ^^ {
+                    ConstantSymbol(_)
+                }
+
 
         def ID: Regex = "[A-Za-z0-9_]+".r
 
-        def Int: Regex = "^\\d+$".r
+        def anychar: Regex = "[A-Za-z0-9_ ]*".r
+
+        //        def Int: Regex = "^\\d+$".r
     }
 
 

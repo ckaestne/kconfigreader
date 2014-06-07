@@ -71,9 +71,9 @@ class KConfigModel() {
             item.knownValues = item._type match {
                 case "boolean" => Set("y", "n")
                 case "tristate" => Set("y", "m", "n")
-                case "integer" => if (item.default.isEmpty) Set("0") else Set()
-                case "hex" => if (item.default.isEmpty) Set("0x0") else Set()
-                case "string" => if (item.default.isEmpty) Set("") else Set()
+                case "integer" => if (item.default.isEmpty && item.hasPrompt != Not(YTrue())) Set("0") else Set("n")
+                case "hex" => if (item.default.isEmpty && item.hasPrompt != Not(YTrue())) Set("0x0") else Set("n")
+                case "string" => if (item.default.isEmpty && item.hasPrompt != Not(YTrue())) Set("") else Set("n")
             }
             item.knownValues ++= item.getDefaults().keys
         }
@@ -121,13 +121,20 @@ case class Item(val name: String, model: KConfigModel) {
 
     var _type: String = "boolean"
     var hasPrompt: Expr = Not(YTrue())
-    private[kconfig] var default: List[(Expr/*value*/, Expr/*visible*/)] = Nil
+    private[kconfig] var default: List[(Expr /*value*/ , Expr /*visible*/ )] = Nil
     var depends: Option[Expr] = None
     var selectedBy: List[(Item, Expr)] = Nil
     var isDefined: Boolean = false
     // an item may be created because it's referenced - when it's never used it is stored as undefined
-    lazy val fexpr_y = FeatureExprFactory.createDefinedExternal(name)
+
+    lazy val fexpr_y = if (isNonBoolean) fexpr_nonboolean
+    else FeatureExprFactory.createDefinedExternal(name)
+    lazy val modulename = if (isTristate) this.name + "_MODULE" else name
+    lazy val fexpr_m = if (isTristate) FeatureExprFactory.createDefinedExternal(modulename) else False
     lazy val fexpr_both = if (isTristate) (fexpr_y or fexpr_m) else fexpr_y
+
+    def fexpr_nonboolean = knownValues.filterNot(_ == "n").map(getNonBooleanValue).foldLeft(False)(_ or _)
+
     var tristateChoice = false
     //special hack for choices
     var knownValues: Set[String] = Set()
@@ -143,7 +150,7 @@ case class Item(val name: String, model: KConfigModel) {
         this
     }
 
-    def getNonBooleanValue(value: String): FeatureExpr = FeatureExprFactory.createDefinedExternal(name+"="+value)
+    def getNonBooleanValue(value: String): FeatureExpr = FeatureExprFactory.createDefinedExternal(name + "=" + value)
 
     import KConfigModel.MODULES
 
@@ -152,8 +159,10 @@ case class Item(val name: String, model: KConfigModel) {
     }
 
     def setDefault(defaultValue: Expr, condition: Expr) {
-        this.default ::= (defaultValue, condition)
+        this.default ::=(defaultValue, condition)
     }
+
+    import FExprHelper._
 
     def setDepends(s: Expr) {
         this.depends = Some(s)
@@ -163,8 +172,9 @@ case class Item(val name: String, model: KConfigModel) {
         this.selectedBy = (item, condition) :: this.selectedBy
     }
 
-    def getConstraints: List[FeatureExpr] = if (!isNonBoolean) {
+    def getConstraints: List[FeatureExpr] = {
         var result: List[FeatureExpr] = Nil
+
 
         //dependencies
         if (depends.isDefined) {
@@ -181,6 +191,8 @@ case class Item(val name: String, model: KConfigModel) {
         if (promptCondition != YTrue()) {
             val nopromptCond = promptCondition.fexpr_both.not() //the if simplifies the formula in a common case. should be equivalent overall
             val defaults = getDefaults()
+
+
             val default_y = getDefault_y(defaults)
             val default_m = getDefault_m(defaults)
             val default_both = default_y or default_m
@@ -192,19 +204,31 @@ case class Item(val name: String, model: KConfigModel) {
                 result ::= nopromptCond implies (MODULES implies (default_y.not implies selectedBy.foldLeft(this.fexpr_y.not)((expr, sel) => (sel._1.fexpr_y and sel._2.fexpr_y) or expr)))
                 result ::= nopromptCond implies (MODULES implies (default_m.not implies selectedBy.foldLeft(this.fexpr_m.not)((expr, sel) => (sel._1.fexpr_m and sel._2.fexpr_both) or expr)))
                 result ::= nopromptCond implies (MODULES.not implies (default_both.not implies selectedBy.foldLeft(this.fexpr_y.not)((expr, sel) => (sel._1.fexpr_both and sel._2.fexpr_both) or expr)))
-            } else
+            } else if (!isNonBoolean) {
+                //if _type == boolean
                 result ::= nopromptCond implies ((default_both.not implies selectedBy.foldLeft(this.fexpr_y.not)((expr, sel) => (sel._1.fexpr_both and sel._2.fexpr_both) or expr)))
+            } else {
+                //if nonboolean
+                val default_any = defaults.map(_._2).foldLeft(False)(_ or _)
+                result ::= nopromptCond implies ((default_any.not implies selectedBy.foldLeft(this.fexpr_y.not)((expr, sel) => (sel._1.fexpr_both and sel._2.fexpr_both) or expr)))
+            }
 
             //if invisible and on by default, then can only be deactivated by dependencies (== default conditions)
             // default -> this <=> defaultCondition
             if (isTristate) {
                 result ::= nopromptCond implies (default_y implies this.fexpr_y)
                 result ::= nopromptCond implies (default_m implies this.fexpr_both)
-            } else {
+            } else if (!isNonBoolean)/*IF type == boolean*/ {
                 var c = (default_both implies this.fexpr_y)
                 //special hack for tristate choices, that are optional if modules are selected but mandatory otherwise
                 if (tristateChoice) c = MODULES.not implies c
                 result ::= nopromptCond implies c
+            } else {
+                for ((defaultvalue, cond)<-defaults) {
+                    assert(knownValues contains defaultvalue)
+                    val f = getNonBooleanValue(defaultvalue)
+                    result ::= nopromptCond implies (cond implies f)
+                }
             }
         }
 
@@ -221,21 +245,31 @@ case class Item(val name: String, model: KConfigModel) {
             result ::= ((sel._1.fexpr_both and sel._2.fexpr_both) implies this.fexpr_both)
         }
 
-        result
-    } else {
-        var result: List[FeatureExpr] = Nil
-
         //in nonboolean options, we create one feature per known value
         //all these are disjunct and one needs to be selected
-        import FExprHelper._
+        if (isNonBoolean) {
+            val values = knownValues.map(getNonBooleanValue).toList
+            result ::= atLeastOne(values)
+            result ++= atMostOneList(values)
+        }
 
-        val values = knownValues.map(getNonBooleanValue).toList
-        result = atLeastOne(values) :: (atMostOneList(values) ++ result)
-
-
+        //nonboolean features cannot be "n" if there is a prompt
+        if (isNonBoolean && (knownValues contains "n")){
+            result ::= promptCondition.fexpr_both implies getNonBooleanValue("n").not
+        }
 
         result
     }
+
+    //    else {
+    //        var result: List[FeatureExpr] = Nil
+    //
+    //
+    //
+    //
+    //
+    //        result
+    //    }
 
     /**
      * do not rely on this, just an approximation
@@ -248,22 +282,22 @@ case class Item(val name: String, model: KConfigModel) {
         for ((v, expr) <- default.reverse) {
             v match {
                 case ConstantSymbol("y") if isTristate =>
-                    result ::= ("y", And(YTrue(),expr))
-                    result ::= ("m", And(MTrue(),expr))
+                    result ::=("y", And(YTrue(), expr))
+                    result ::=("m", And(MTrue(), expr))
                 case ConstantSymbol(s) =>
-                    result ::= (s, expr)
+                    result ::=(s, expr)
                 case e if isTristate /*any expression is evaluated to y/n/m*/ =>
-                    result ::=("y", And(YTrue(),And(v, expr)))
-                    result ::=("m", And(MTrue(),And(v, expr)))
+                    result ::=("y", And(YTrue(), And(v, expr)))
+                    result ::=("m", And(MTrue(), And(v, expr)))
                 case e /*any expression is evaluated to y/n/m*/ =>
-                    result ::= ("y", And(v, expr))
+                    result ::=("y", And(v, expr))
             }
         }
         result
     }
 
 
-        /**
+    /**
      * returns the different defaults and their respective conditions
      *
      * this evaluates conditions to booleans(!), i.e., m and y are both considered true
@@ -319,10 +353,9 @@ case class Item(val name: String, model: KConfigModel) {
 
 
     def isTristate = _type == "tristate"
+
     def isNonBoolean = !(Set("boolean", "tristate") contains _type)
 
-    lazy val modulename = if (isTristate) this.name + "_MODULE" else name
-    lazy val fexpr_m = if (isTristate) FeatureExprFactory.createDefinedExternal(modulename) else False
 
     override def toString = "Item " + name
 }

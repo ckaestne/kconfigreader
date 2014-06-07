@@ -2,13 +2,14 @@ package de.fosd.typechef.kconfig
 
 import org.junit._
 import java.io._
-import de.fosd.typechef.featureexpr.FeatureExprFactory
+import de.fosd.typechef.featureexpr.{FeatureExpr, FeatureExprFactory}
 import scala._
 import FeatureExprFactory._
 import de.fosd.typechef.featureexpr.sat.{SATFeatureModel, SATFeatureExpr}
 import java.net.URI
 import org.sat4j.core.{VecInt, Vec}
 import org.sat4j.specs.IVecInt
+import de.fosd.typechef.busybox.DimacsWriter
 
 @Ignore
 class LinuxTest extends DifferentialTesting {
@@ -119,14 +120,23 @@ class LinuxTest extends DifferentialTesting {
 
     def writeModel(arch: String, workingDir: File, model: KConfigModel) {
         val writer = new FileWriter(new File(workingDir, arch + ".model"))
+        var fexpr:FeatureExpr = True
         for (i <- model.items.values.toList.sortBy(_.name)) {
             writer.write("#item " + i.name + "\n")
-            i.getConstraints.map(s => if (!s.isTautology()) writer.write(s + "\n"))
+            i.getConstraints.map(s =>
+                if (!s.isTautology()) {
+                    writer.write(s + "\n")
+                    fexpr = fexpr and s
+                })
         }
         for (i <- model.choices.values.toList.sortBy(_.name)) {
             writer.write("#choice " + i.name + "\n")
-            i.getConstraints.map(s => if (!s.isTautology()) writer.write(s + "\n"))
+            i.getConstraints.map(s => if (!s.isTautology()) {
+                writer.write(s + "\n")
+                fexpr = fexpr and s
+            })
         }
         writer.close()
+        new DimacsWriter().writeAsDimacs(fexpr.asInstanceOf[SATFeatureExpr],new File(workingDir,arch+".dimacs"))
     }
 }

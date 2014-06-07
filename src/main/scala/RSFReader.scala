@@ -168,7 +168,7 @@ class RSFReader {
 
         def ID: Regex = "[A-Za-z0-9_]+".r
 
-        def anychar: Regex = "[A-Za-z0-9_ ]*".r
+        def anychar: Regex = "[A-Za-z0-9_\\-/\\.$ ]*".r
 
         //        def Int: Regex = "^\\d+$".r
     }

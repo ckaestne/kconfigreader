@@ -31,23 +31,27 @@ class LinuxTest extends DifferentialTesting {
     @Test@Ignore
     def testLoadLinux() {
         for (arch <- List("x86", "arm")) {
-            //        FeatureExprFactory.setDefault(FeatureExprFactory.bdd)
+            println("getting model")
             val model = getModel(arch)
 
-            model.findKnownValues
-
-            for (item<-model.items.values) {
-                println(item.name+" -> "+item.knownValues.mkString(", "))
-
-            }
-
-//            val allconstraints = model.getConstraints
+//            model.findKnownValues
 //
-//            assert(allconstraints.forall(_.isSatisfiable()), "extracted constraint is not satisfiable")
-//            assert(allconstraints.reduce(_ and _).isSatisfiable(), "extracted model is not satisfiable")
+//            for (item<-model.items.values) {
+//                println(item.name+" -> "+item.knownValues.mkString(", "))
 //
+//            }
+
+            println("getting constraints")
+            val allconstraints = model.getConstraints
+
+            println("checking each constraint")
+            assert(allconstraints.forall(_.isSatisfiable()), "extracted constraint is not satisfiable")
+            println("checking combined constraint")
+            assert(allconstraints.reduce(_ and _).isSatisfiable(), "extracted model is not satisfiable")
 //
-//            writeModel(arch, workingDir, model)
+
+            println("writing model")
+            writeModel(arch, workingDir, model)
 
         }
     }
@@ -140,6 +144,6 @@ class LinuxTest extends DifferentialTesting {
             })
         }
         writer.close()
-        new DimacsWriter().writeAsDimacs(fexpr.asInstanceOf[SATFeatureExpr],new File(workingDir,arch+".dimacs"))
+//        new DimacsWriter().writeAsDimacs(fexpr.asInstanceOf[SATFeatureExpr],new File(workingDir,arch+".dimacs"))
     }
 }

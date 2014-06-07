@@ -144,7 +144,7 @@ class RSFReader {
                     case s ~ None => s
                     case a ~ Some(op ~ b) =>
                         val r = Equals(a, b)
-                        if (op == "!-") Not(r) else r
+                        if (op == "!=") Not(r) else r
                 }
 
         def symbol: Parser[Symbol] =

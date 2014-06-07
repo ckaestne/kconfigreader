@@ -41,7 +41,7 @@ case class ConstantSymbol(v: String) extends Expr with Symbol {
 
     def eval(assignedValues: Map[String, String]): String = v
 
-    lazy val fexpr2: FeatureExpr = False
+    lazy val fexpr2: FeatureExpr =  if (v=="y") True else False
     override val fexpr_y: FeatureExpr = if (v=="y") True else False
     override val fexpr_m: FeatureExpr = if (v=="m") True else False
 }
@@ -116,18 +116,13 @@ case class Not(a: Expr) extends Expr {
     lazy val fexpr_m: FeatureExpr = a.fexpr_m
 }
 
-case class YTrue() extends Expr {
-    lazy val fexpr2: FeatureExpr = True
-
-    def kexpr = "y"
-
-    def eval(v: Set[String]) = true
-
-    def eval(v: Map[String, String]): String = "y"
-
-    lazy val fexpr_y: FeatureExpr = True
-    lazy val fexpr_m: FeatureExpr = False
+object YTrue{
+    def apply() = ConstantSymbol("y")
 }
+object MTrue{
+    def apply() = ConstantSymbol("m")
+}
+
 
 case class Equals(a: Symbol, b: Symbol) extends Expr {
 
@@ -140,27 +135,11 @@ case class Equals(a: Symbol, b: Symbol) extends Expr {
 
     def eval(v: Map[String, String]): String = if (a.eval(v) == b.eval(v)) "y" else "n"
 
-    lazy val fexpr_y: FeatureExpr =
-        if (a.isInstanceOf[Name] && b.isInstanceOf[Name])
-            (a.asInstanceOf[Name].fexpr_y equiv b.asInstanceOf[Name].fexpr_y) and (a.asInstanceOf[Name].fexpr_m equiv b.asInstanceOf[Name].fexpr_m)
-        else False
+    lazy val fexpr_y: FeatureExpr = (a.fexpr_y equiv b.fexpr_y) and (a.fexpr_m equiv b.fexpr_m)//TODO support comparisons of constants
 
     lazy val fexpr_m: FeatureExpr = False
 
 
-}
-
-case class MTrue() extends Expr {
-    lazy val fexpr2: FeatureExpr = False
-
-    def kexpr = "y"
-
-    def eval(v: Set[String]) = true
-
-    def eval(v: Map[String, String]): String = "m"
-
-    lazy val fexpr_y: FeatureExpr = False
-    lazy val fexpr_m: FeatureExpr = True
 }
 
 

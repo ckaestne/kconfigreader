@@ -56,12 +56,12 @@ class LinuxTest extends DifferentialTesting {
         }
     }
 
-//    @Test
-//    def test32vs64() {
-//
-//        genAllCombinationsFromPartial(x86kconfig, workingDir, x86model,
-//            Set(/*"X86_32","X86_64"*/))
-//    }
+    @Test
+    def test32vs64() {
+
+        genAllCombinationsFromPartial(x86kconfig, workingDir, x86model,
+            Set(/*"X86_32","X86_64"*/))
+    }
 
     def createFromDimacsFile_2Var(file: URI): SATFeatureModel = createFromDimacsFile_2Var(scala.io.Source.fromFile(file))
 

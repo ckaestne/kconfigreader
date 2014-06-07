@@ -175,7 +175,7 @@ case class Item(val name: String, model: KConfigModel) {
         this.selectedBy = (item, condition) :: this.selectedBy
     }
 
-    def getConstraints: List[FeatureExpr] = {
+    def getConstraints: List[FeatureExpr] = if (isDefined || (name startsWith "CHOICE")) {
         var result: List[FeatureExpr] = Nil
 
 
@@ -262,7 +262,7 @@ case class Item(val name: String, model: KConfigModel) {
         }
 
         result
-    }
+    } else List(fexpr_both.not())
 
     //    else {
     //        var result: List[FeatureExpr] = Nil

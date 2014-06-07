@@ -183,8 +183,11 @@ trait DifferentialTesting {
             } else if (!item.isNonBoolean) {
                 if (value == "y") expr = expr and item.fexpr_y
                 else expr = expr andNot item.fexpr_y
-            } else //nonboolean
-                expr = expr and item.getNonBooleanValue(value)
+            } else {
+                //nonboolean
+                val v=if (item._type=="string" && value!="n") value.drop(1).dropRight(1) else value //get rid of the quotes for strings
+                expr = expr and item.getNonBooleanValue(v)
+            }
         }
 
         expr
@@ -240,7 +243,9 @@ trait DifferentialTesting {
         else {
             val r = explodeConfigs(features.tail)
             val f = features.head
-            val values = f.knownValues.toList
+            var values = f.knownValues.toList
+            if (f._type=="string")
+                values = values.map(s=>if (s!="n") "\""+s+"\"" else s)
             assert(!values.isEmpty)
 
             values.flatMap(value =>
@@ -272,7 +277,7 @@ trait DifferentialTesting {
         val ModuleConfig = "^CONFIG_([a-zA-Z0-9_]+)=m$".r
         val NonBoolean = "^CONFIG_([a-zA-Z0-9_]+)=(\\d+)$".r
         val NonBooleanHex = "^CONFIG_([a-zA-Z0-9_]+)=(0x\\d+)$".r
-        val NonBooleanStr = "^CONFIG_([a-zA-Z0-9_]+)=\"(.*)\"$".r
+        val NonBooleanStr = "^CONFIG_([a-zA-Z0-9_]+)=(\".*\")$".r
         for (l <- io.Source.fromFile(configFile).getLines() if !(l.startsWith("#"))) {
             l match {
                 case EnabledConfig(c) => foundConfig += (c -> "y")

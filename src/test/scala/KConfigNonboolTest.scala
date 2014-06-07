@@ -7,7 +7,7 @@ import org.junit._
  */
 class KConfigNonboolTest extends DifferentialTesting {
 
-    @Test def testMiniKConfig() {
+    @Test def testNonbool() {
         checkTestModelBruteForce("src/test/resources/nonbool.config")
     }
 

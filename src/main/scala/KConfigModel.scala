@@ -143,6 +143,8 @@ case class Item(val name: String, model: KConfigModel) {
         this
     }
 
+    def getNonBooleanValue(value: String): FeatureExpr = FeatureExprFactory.createDefinedExternal(name+"="+value)
+
     import KConfigModel.MODULES
 
     def setPrompt(p: Expr) {
@@ -161,7 +163,7 @@ case class Item(val name: String, model: KConfigModel) {
         this.selectedBy = (item, condition) :: this.selectedBy
     }
 
-    def getConstraints: List[FeatureExpr] = if (Set("boolean", "tristate") contains _type) {
+    def getConstraints: List[FeatureExpr] = if (!isNonBoolean) {
         var result: List[FeatureExpr] = Nil
 
         //dependencies
@@ -220,7 +222,20 @@ case class Item(val name: String, model: KConfigModel) {
         }
 
         result
-    } else Nil
+    } else {
+        var result: List[FeatureExpr] = Nil
+
+        //in nonboolean options, we create one feature per known value
+        //all these are disjunct and one needs to be selected
+        import FExprHelper._
+
+        val values = knownValues.map(getNonBooleanValue).toList
+        result = atLeastOne(values) :: (atMostOneList(values) ++ result)
+
+
+
+        result
+    }
 
     /**
      * do not rely on this, just an approximation
@@ -304,6 +319,7 @@ case class Item(val name: String, model: KConfigModel) {
 
 
     def isTristate = _type == "tristate"
+    def isNonBoolean = !(Set("boolean", "tristate") contains _type)
 
     lazy val modulename = if (isTristate) this.name + "_MODULE" else name
     lazy val fexpr_m = if (isTristate) FeatureExprFactory.createDefinedExternal(modulename) else False
@@ -365,4 +381,24 @@ case class Choice(val name: String) {
     }
 
     def isTristate = _type == "tristate"
+}
+
+object FExprHelper {
+    def oneOf(features: List[FeatureExpr]): FeatureExpr =
+        atLeastOne(features) and atMostOne(features)
+
+    def atLeastOne(featuresNames: List[FeatureExpr]): FeatureExpr =
+        featuresNames.foldLeft(False)(_ or _)
+
+    def atMostOne(features: List[FeatureExpr]): FeatureExpr =
+        (for ((a, b) <- pairs(features)) yield a mex b).
+            foldLeft(True)(_ and _)
+
+    def atMostOneList(features: List[FeatureExpr]): List[FeatureExpr] =
+        (for ((a, b) <- pairs(features)) yield a mex b).toList
+
+
+    def pairs[A](elem: List[A]): Iterator[(A, A)] =
+        for (a <- elem.tails.take(elem.size); b <- a.tail) yield (a.head, b)
+
 }

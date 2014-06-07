@@ -88,7 +88,7 @@ class RSFReader {
             choiceItem.default = List((ConstantSymbol("y"), choiceItem.depends.getOrElse(YTrue())))
 
         }
-
+        model.findKnownValues
         model
     }
 
@@ -148,19 +148,19 @@ class RSFReader {
                 }
 
         def symbol: Parser[Symbol] =
-            ("y"|"m"|"n") ^^ {s=>ConstantSymbol(s)} |
+            ("y" | "m" | "n") ^^ { s => ConstantSymbol(s)} |
                 ID ^^ {
-                s =>
-                    try {
-                        s.toInt
-                        //if that's successful, it's an integer constant
-                        ConstantSymbol(s)
-                    } catch {
-                        case e: NumberFormatException =>
-                                                                                                                                                                                                                                                                                                                                                                                                                                        Name(fm.getItem(s))
-                    }
+                    s =>
+                        try {
+                            s.toInt
+                            //if that's successful, it's an integer constant
+                            ConstantSymbol(s)
+                        } catch {
+                            case e: NumberFormatException =>
+                                Name(fm.getItem(s))
+                        }
 
-            } |
+                } |
                 "'" ~> anychar <~ "'" ^^ {
                     ConstantSymbol(_)
                 }

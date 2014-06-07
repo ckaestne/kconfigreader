@@ -37,13 +37,13 @@ case class ConstantSymbol(v: String) extends Expr with Symbol {
 
     override def kexpr: String = "'" + v + "'"
 
-    def eval(assignedValues: Set[String]): Boolean = v=="y"
+    def eval(assignedValues: Set[String]): Boolean = v == "y"
 
     def eval(assignedValues: Map[String, String]): String = v
 
-    lazy val fexpr2: FeatureExpr =  if (v=="y") True else False
-    override val fexpr_y: FeatureExpr = if (v=="y") True else False
-    override val fexpr_m: FeatureExpr = if (v=="m") True else False
+    lazy val fexpr2: FeatureExpr = if (v == "y") True else False
+    override val fexpr_y: FeatureExpr = if (v == "y") True else False
+    override val fexpr_m: FeatureExpr = if (v == "m") True else False
 }
 
 case class Name(n: Item) extends Expr with Symbol {
@@ -116,10 +116,11 @@ case class Not(a: Expr) extends Expr {
     lazy val fexpr_m: FeatureExpr = a.fexpr_m
 }
 
-object YTrue{
+object YTrue {
     def apply() = ConstantSymbol("y")
 }
-object MTrue{
+
+object MTrue {
     def apply() = ConstantSymbol("m")
 }
 
@@ -135,7 +136,48 @@ case class Equals(a: Symbol, b: Symbol) extends Expr {
 
     def eval(v: Map[String, String]): String = if (a.eval(v) == b.eval(v)) "y" else "n"
 
-    lazy val fexpr_y: FeatureExpr = (a.fexpr_y equiv b.fexpr_y) and (a.fexpr_m equiv b.fexpr_m)//TODO support comparisons of constants
+
+    lazy val fexpr_y: FeatureExpr = (a, b) match {
+        //comparing two constants is easy
+        case (ConstantSymbol(aa), ConstantSymbol(bb)) => if (aa == bb) True else False
+        //comparing two boolean/tristate options (including y/m/n constants) is well established
+        case (aa, bb) if isbool(a) && isbool(b) => boolequiv(aa, bb)
+        //comparing nonboolean options actually requires a deeper comparison
+        //comparing variable against constant
+        case (aa@Name(aai), ConstantSymbol(bb)) if !isbool(aa) => compareNonboolConst(aai, bb)
+        case (ConstantSymbol(bb), aa@Name(aai)) if !isbool(aa) => compareNonboolConst(aai, bb)
+        //comparing two nonboolean variables (true if they have the same value)
+        case (aa@Name(aai), bb@Name(bbi)) if !isbool(aa) && !isbool(bb) => compareNonboolItems(aai, bbi)
+        case (aa,bb)=> assert(false, "unsupported combination: "+aa+"="+bb); False
+
+    }
+
+    private def isbool(a: Symbol) = a match {
+        case ConstantSymbol(s) if !(Set("y", "m", "n") contains s) => false
+        case Name(i) if (i.isNonBoolean) => false
+        case _ => true
+    }
+
+    private def compareNonboolConst(item: Item, value: String): FeatureExpr = {
+        assert(item.knownValues contains value)
+        item.getNonBooleanValue(value)
+    }
+
+    private def compareNonboolItems(item1: Item, item2: Item): FeatureExpr = {
+        val sharedValues = item1.knownValues intersect item2.knownValues
+        val pairs = for (sharedValue <- sharedValues) yield
+            item1.getNonBooleanValue(sharedValue) and item2.getNonBooleanValue(sharedValue)
+        pairs.foldLeft(False)(_ or _)
+    }
+
+    /**
+     * equivalent comparison between two boolean/tristate features
+     * supports comparison between two names or Constants that are y/m/n
+     */
+    private def boolequiv(a: Symbol, b: Symbol) = {
+        assert(isbool(a) && isbool(b))
+        (a.fexpr_y equiv b.fexpr_y) and (a.fexpr_m equiv b.fexpr_m)
+    }
 
     lazy val fexpr_m: FeatureExpr = False
 

@@ -159,7 +159,8 @@ case class Equals(a: Symbol, b: Symbol) extends Expr {
     }
 
     private def compareNonboolConst(item: Item, value: String): FeatureExpr = {
-        assert(item.knownValues contains value)
+        if (!(item.knownValues contains value))
+            item.knownValues += value
         item.getNonBooleanValue(value)
     }
 

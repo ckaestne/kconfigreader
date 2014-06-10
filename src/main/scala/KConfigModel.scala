@@ -78,7 +78,7 @@ class KConfigModel() {
                 case "hex" => if (item.default.isEmpty && item.hasPrompt != Not(YTrue())) Set("0x0") else Set("n")
                 case "string" => if (item.default.isEmpty && item.hasPrompt != Not(YTrue())) Set("") else Set("n")
             }
-            item.knownValues ++= item.getDefaults().keys
+            item.knownValues ++= item.getDefaultValues
         }
 
 
@@ -331,9 +331,31 @@ case class Item(val name: String, model: KConfigModel) {
                     updateResult("y", And(v, expr).fexpr_y)
                     updateResult("m", And(v, expr).fexpr_m)
                 case Name(i) if isNonBoolean /*reference to another nonboolean item*/=>
-                    //TODO support references to values of other items
+                //TODO support references to values of other items
                 case e /*any expression is evaluated to y/n/m*/ =>
                     updateResult("y", And(v, expr).fexpr_both)
+            }
+        }
+        result
+    }
+
+    def getDefaultValues(): Set[String] = {
+        var result: Set[String] = Set()
+
+        for ((v, expr) <- default.reverse) {
+            v match {
+                case ConstantSymbol("y") if isTristate =>
+                    result += "y"
+                    result += "m"
+                case ConstantSymbol(s) =>
+                    result += s
+                case e if isTristate /*any expression is evaluated to y/n/m*/ =>
+                    result += "y"
+                    result += "m"
+                case Name(i) if isNonBoolean /*reference to another nonboolean item*/=>
+                //TODO support references to values of other items
+                case e /*any expression is evaluated to y/n/m*/ =>
+                    result += "y"
             }
         }
         result

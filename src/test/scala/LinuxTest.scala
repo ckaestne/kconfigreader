@@ -30,16 +30,9 @@ class LinuxTest extends DifferentialTesting {
 
     @Test@Ignore
     def testLoadLinux() {
-        for (arch <- List("x86", "arm")) {
+        for (arch <- List("x86"/*, "arm"*/)) {
             println("getting model")
             val model = getModel(arch)
-
-//            model.findKnownValues
-//
-//            for (item<-model.items.values) {
-//                println(item.name+" -> "+item.knownValues.mkString(", "))
-//
-//            }
 
             println("getting constraints")
             val allconstraints = model.getConstraints
@@ -53,6 +46,8 @@ class LinuxTest extends DifferentialTesting {
             println("writing model")
             writeModel(arch, workingDir, model)
 
+            println("writing dimacs")
+            new DimacsWriter().writeAsDimacs2(model.getConstraints.map(_.asInstanceOf[SATFeatureExpr]), new File(workingDir, arch+".dimacs"))
         }
     }
 

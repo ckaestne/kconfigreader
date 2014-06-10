@@ -6,7 +6,11 @@ organization := "de.fosd.typechef"
 
 scalaVersion := "2.10.2"
 
-libraryDependencies += "de.fosd.typechef" % "frontend_2.10" % "0.3.4"
+// libraryDependencies += "de.fosd.typechef" % "frontend_2.10" % "0.3.4"
+
+libraryDependencies += "org.sat4j" % "org.sat4j.core" % "2.3.1"
+
+libraryDependencies += "de.fosd.typechef" % "javabdd_repackaged" % "1.0b2"
 
 libraryDependencies +="junit" % "junit" % "4.8.2" % "test"
 

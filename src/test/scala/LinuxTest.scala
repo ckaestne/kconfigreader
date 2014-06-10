@@ -29,6 +29,7 @@ class LinuxTest extends DifferentialTesting {
     }
 
 
+
     @Test
     @Ignore
     def testLoadLinux() {
@@ -58,6 +59,9 @@ class LinuxTest extends DifferentialTesting {
             //            val reducedconstraints = reduceConstraints(allconstraints)
             println("writing dimacs")
             new DimacsWriter().writeAsDimacs2(allconstraints.map(_.asInstanceOf[SATFeatureExpr]), new File(workingDir, arch + ".dimacs"))
+
+            println("writing completed.conf")
+            writeCompletedConf(model, new File(workingDir, arch + ".completedconf.h"))
         }
     }
 
@@ -186,6 +190,28 @@ class LinuxTest extends DifferentialTesting {
 
 
         writer.close()
+    }
+
+    def writeCompletedConf(model: KConfigModel, outputfile: File) = {
+        val writer = new FileWriter(outputfile)
+
+        val fm = model.getFM
+
+        for (feature <- fm.collectDistinctFeatureObjects; if !(feature.feature contains "=")) {
+
+            if ((fm and feature).isContradiction()) {
+                writer.write("#undef CONFIG_%s\n".format(feature.feature))
+                println("#undef CONFIG_" + feature.feature)
+            }
+            else if ((fm andNot feature).isContradiction()) {
+                writer.write("#define CONFIG_%s\n".format(feature.feature))
+                println("#define CONFIG_" + feature.feature)
+            }
+
+        }
+
+        writer.close()
+
     }
 
     def writeModel(outputfile: File, model: KConfigModel) {

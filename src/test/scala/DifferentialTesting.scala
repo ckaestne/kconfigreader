@@ -98,7 +98,7 @@ trait DifferentialTesting {
     //    }
 
     def genAllCombinations(kconfigFile: String, workingDir: File, fm: KConfigModel) {
-        val configs = explodeConfigs(fm.items.values.filter(s => !(s.name startsWith "CHOICE_")).toList.sortBy(_.name))
+        val configs = explodeConfigs(fm.items.values.filter(s => !s.isChoice).toList.sortBy(_.name))
 
         val result: List[(String, Boolean /*expectedValid*/ , Boolean /*correctResult*/ )] = for (config <- configs) yield {
             val partialAssignment = getPartialAssignment(fm, config)
@@ -271,7 +271,7 @@ trait DifferentialTesting {
 
     def genAllCombinationsFromPartial(kconfigFile: String, workingDir: File, fm: KConfigModel, featureSet: Set[String]) {
         def cleanAssignment(l: Set[String], model: KConfigModel): Set[String] =
-            l.filterNot(_.startsWith("CHOICE_")).filter(s => s.endsWith("_MODULE") || model.getItem(s).isDefined)
+            l.filterNot(fm.getItem(_).isChoice).filter(s => s.endsWith("_MODULE") || model.getItem(s).isDefined)
 
         val configs = explodeConfigs(cleanAssignment(featureSet, fm).map(fm.getItem))
 
@@ -329,7 +329,7 @@ trait DifferentialTesting {
 
         var result: Map[String, String] = Map()
         for (f <- disabled) {
-            if (f.feature startsWith "CHOICE") {
+            if (fm.getItem(f.feature).isChoice) {
                 /*nothing*/
             }
             else if (f.feature.endsWith("_MODULE"))
@@ -340,7 +340,7 @@ trait DifferentialTesting {
                 result += (f.feature -> "n")
         }
         for (f <- enabled) {
-            if (f.feature startsWith "CHOICE") {
+            if (fm.getItem(f.feature).isChoice) {
                 /*nothing*/
             }
             else if (f.feature.endsWith("_MODULE"))

@@ -53,7 +53,7 @@ class KConfigModel() {
     def getItems = items.keys.toSet
 
     def getBooleanSymbols: Set[SingleFeatureExpr] = {
-        val i = items.values.filterNot(_.name startsWith "CHOICE_")
+        val i = items.values.filterNot(_.isChoice)
         val boolitems = i.filter(_._type == "boolean")
         val triitems = i.filter(_._type == "tristate")
         (boolitems.map(_.name) ++ triitems.map(_.name) ++ triitems.map(_.name + "_MODULE")).toSet.map(FeatureExprFactory.createDefinedExternal)
@@ -130,6 +130,7 @@ case class Item(val name: String, model: KConfigModel) {
     var depends: Option[Expr] = None
     var selectedBy: List[(Item, Expr)] = Nil
     var isDefined: Boolean = false
+    var isChoice: Boolean = false //item is a choice? (used for filtering)
     // an item may be created because it's referenced - when it's never used it is stored as undefined
 
     lazy val fexpr_y = if (isNonBoolean) fexpr_nonboolean
@@ -163,6 +164,10 @@ case class Item(val name: String, model: KConfigModel) {
         this.hasPrompt = p
     }
 
+    def setChoice() {
+        this.isChoice=true
+    }
+
     def setDefault(defaultValue: Expr, condition: Expr) {
         this.default ::=(defaultValue, condition)
     }
@@ -178,7 +183,7 @@ case class Item(val name: String, model: KConfigModel) {
         this.selectedBy = (item, condition) :: this.selectedBy
     }
 
-    def getConstraints: List[FeatureExpr] = if (isDefined || (name startsWith "CHOICE")) {
+    def getConstraints: List[FeatureExpr] = if (isDefined || isChoice) {
         var result: List[FeatureExpr] = Nil
 
 

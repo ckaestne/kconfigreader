@@ -5,11 +5,11 @@ import java.io._
 import de.fosd.typechef.featureexpr.{FeatureExpr, FeatureExprFactory}
 import scala._
 import FeatureExprFactory._
-import de.fosd.typechef.featureexpr.sat.{SATFeatureModel, SATFeatureExpr}
 import java.net.URI
 import org.sat4j.core.{VecInt, Vec}
 import org.sat4j.specs.IVecInt
 import de.fosd.typechef.busybox.DimacsWriter
+import de.fosd.typechef.featureexpr.sat.{SATFeatureModel, SATFeatureExpr}
 
 @Ignore
 class LinuxTest extends DifferentialTesting {
@@ -28,28 +28,63 @@ class LinuxTest extends DifferentialTesting {
         getModel(workingDir, kconfigFile(arch), rsfFile)
     }
 
-    @Test@Ignore
+
+    @Test
+    @Ignore
     def testLoadLinux() {
-        for (arch <- List("x86"/*, "arm"*/)) {
+        for (arch <- List("x86" /*, "arm"*/)) {
             println("getting model")
             val model = getModel(arch)
 
             println("getting constraints")
             val allconstraints = model.getConstraints
 
-            println("checking each constraint")
-            assert(allconstraints.forall(_.isSatisfiable()), "extracted constraint is not satisfiable")
             println("checking combined constraint")
-            assert(allconstraints.reduce(_ and _).isSatisfiable(), "extracted model is not satisfiable")
-//
+            val isSat = allconstraints.reduce(_ and _).isSatisfiable()
+            if (!isSat) {
+                println("checking each constraint")
+                assert(allconstraints.forall(_.isSatisfiable()), "extracted constraint is not satisfiable")
+            }
+            assert(isSat, "extracted model is not satisfiable")
+            //
 
             println("writing model")
-            writeModel(arch, workingDir, model)
+            writeModel(new File(workingDir, arch + ".model"), model)
 
+            println("writing nonboolean")
+            writeNonBoolean(model, new File(workingDir, arch + ".nonbool.h"))
+
+            //            println("reducing constraints for dimacs")
+            //            val reducedconstraints = reduceConstraints(allconstraints)
             println("writing dimacs")
-            new DimacsWriter().writeAsDimacs2(model.getConstraints.map(_.asInstanceOf[SATFeatureExpr]), new File(workingDir, arch+".dimacs"))
+            new DimacsWriter().writeAsDimacs2(allconstraints.map(_.asInstanceOf[SATFeatureExpr]), new File(workingDir, arch + ".dimacs"))
         }
     }
+
+
+    def reduceConstraints(fexprs: List[FeatureExpr]): List[FeatureExpr] = {
+
+        var result: List[FeatureExpr] = Nil
+
+        var fm: FeatureExpr = FeatureExprFactory.True
+        var c = 0
+        val cm = fexprs.size
+
+        for (fexpr <- fexprs) {
+            c += 1
+            if (fexpr.isTautology() || (fm implies fexpr).isTautology())
+                println(c + "/" + cm + " redundant: " + fexpr)
+            else {
+                result ::= fexpr
+                fm = fm and fexpr
+            }
+
+
+        }
+
+        result
+    }
+
 
     @Test
     def test32vs64() {
@@ -96,7 +131,8 @@ class LinuxTest extends DifferentialTesting {
     }
 
 
-    @Test@Ignore
+    @Test
+    @Ignore
     def testAgainstOld {
         val dimacs = "src/test/resources/2.6.33.3-2var.dimacs"
         val fm = createFromDimacsFile_2Var(dimacs)
@@ -112,17 +148,49 @@ class LinuxTest extends DifferentialTesting {
                 if (!c.collectDistinctFeatures.exists(f => f.startsWith("CHOICE") || f.endsWith("_MODULE") || f == "MODULES"))
                     if (!c.isTautology())
                         if (!c.isTautology(fm)) {
-                            print ("#" + i.name)
+                            print("#" + i.name)
                             println(" missing constraint: " + c)
                         }
-//                        else println("found: " + c)
+            //                        else println("found: " + c)
         }
     }
 
 
-    def writeModel(arch: String, workingDir: File, model: KConfigModel) {
-        val writer = new FileWriter(new File(workingDir, arch + ".model"))
-        var fexpr:FeatureExpr = True
+    def formatExpr(s: FeatureExpr): String = if (s.isTautology()) "1" else
+        s.asInstanceOf[SATFeatureExpr] match {
+            case de.fosd.typechef.featureexpr.sat.DefinedExpr(s) =>
+                assert (!(s.feature contains "="))
+                "defined(CONFIG_%s)".format(s.feature)
+            case de.fosd.typechef.featureexpr.sat.And(clauses) =>
+                clauses.map(formatExpr).mkString("("," && ",")")
+            case de.fosd.typechef.featureexpr.sat.Or(clauses) =>
+                clauses.map(formatExpr).mkString("("," || ",")")
+            case de.fosd.typechef.featureexpr.sat.Not(e) =>
+                "!"+formatExpr(e)
+        }
+
+    def writeNonBoolean(model: KConfigModel, file: File) = {
+        val writer = new FileWriter(file)
+
+        for (item <- model.items.values; if item.isNonBoolean) {
+            val defaults = item.getDefaults().filter(_._2.isSatisfiable())
+            if (defaults.size == 1)
+                writer.write("#define CONFIG_%s %s\n".format(item.name, defaults.keys.head))
+            else for ((default, fexpr) <- defaults)
+                writer.write("#if %s\n  #define CONFIG_%s %s\n#endif\n".format(formatExpr(fexpr), item.name, default))
+
+            writer.write("\n")
+
+
+        }
+
+
+        writer.close()
+    }
+
+    def writeModel(outputfile: File, model: KConfigModel) {
+        val writer = new FileWriter(outputfile)
+        var fexpr: FeatureExpr = True
         for (i <- model.items.values.toList.sortBy(_.name)) {
             writer.write("#item " + i.name + "\n")
             i.getConstraints.map(s =>
@@ -139,6 +207,6 @@ class LinuxTest extends DifferentialTesting {
             })
         }
         writer.close()
-//        new DimacsWriter().writeAsDimacs(fexpr.asInstanceOf[SATFeatureExpr],new File(workingDir,arch+".dimacs"))
+        //        new DimacsWriter().writeAsDimacs(fexpr.asInstanceOf[SATFeatureExpr],new File(workingDir,arch+".dimacs"))
     }
 }

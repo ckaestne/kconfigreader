@@ -1,12 +1,9 @@
 package de.fosd.typechef.busybox
 
-import de.fosd.typechef.featureexpr.{SingleFeatureExpr, FeatureExpr, FeatureExprFactory, FeatureExprParser}
+import de.fosd.typechef.featureexpr.{SingleFeatureExpr, FeatureExpr, FeatureExprFactory}
 import de.fosd.typechef.featureexpr.sat._
-import java.io.{OutputStreamWriter, PrintStream, File, FileWriter}
-import FeatureExprFactory.sat._
-import de.fosd.typechef.featureexpr.bdd.{SingleBDDFeatureExpr, BDDFeatureExprHack, BDDFeatureExprFactory, BDDFeatureExpr}
-import net.sf.javabdd.BDD
-import java.util
+import java.io.{File, FileWriter}
+import de.fosd.typechef.featureexpr.bdd.BDDFeatureExprFactory
 
 
 class DimacsWriter {
@@ -56,7 +53,7 @@ class DimacsWriter {
         }
         var clauses = 0
         for (fexpr <- fexprs) {
-            var cnf = fexpr.toCnfEquiSat()                                                                                                                                                                                                                                                                                     //.toCnfEquiSat()
+            var cnf = fexpr.toCnfEquiSat() //.toCnfEquiSat()
 
 
             for (clause <- getCNFClauses(cnf)) {
@@ -64,7 +61,7 @@ class DimacsWriter {
                     lit match {
                         case d: DefinedExpr => sb.append(getId(d)).append(" ")
                         case Not(d: DefinedExpr) => sb.append("-").append(getId(d)).append(" ")
-                        case _ => assert(false, "invalid CNF literal "+lit)
+                        case _ => assert(false, "invalid CNF literal " + lit)
                     }
                 sb.append("0\n")
                 clauses += 1
@@ -85,42 +82,42 @@ class DimacsWriter {
     }
 
 
-//    def bddtest(fexprs: List[SATFeatureExpr], outputFilename: File) {
-//        import de.fosd.typechef.featureexpr.sat._
-//
-////        val bddf=new BDDFeatureExprHack()
-//
-//        def toBDD(expr: SATFeatureExpr): /*BDD*/FeatureExpr = {
-//            expr match {
-//                case And(clauses) =>
-//                    clauses.map(toBDD).foldLeft(BDDFeatureExprFactory.True)(_ and _)
-//                case Or(clauses) =>
-//                    clauses.map(toBDD).foldLeft(BDDFeatureExprFactory.False)(_ or _)
-//                case Not(e) =>
-//                    toBDD(e).not()
-//                case DefinedExpr(n) => {
-//                    val bdd = BDDFeatureExprFactory.createDefinedExternal(n.feature)
-////                    BDDFeatureExprHack.inc(bdd)
-//                    bdd
-//                }
-////                case DefinedExpr(n) => bddf.definedExternal(n.feature)
-//
-//
-//            }
-//        }
-//
-//        for (fexpr <- fexprs) {
-//            println(fexpr)
-//
-//            val bdd=toBDD(fexpr)
-//            println(bdd)
-////            BDDFeatureExprHack.free(bdd.asInstanceOf[BDDFeatureExpr])
-//
-//            BDDFeatureExprHack.resetBDD
-//        }
-//
-//    }
-//
+    //    def bddtest(fexprs: List[SATFeatureExpr], outputFilename: File) {
+    //        import de.fosd.typechef.featureexpr.sat._
+    //
+    ////        val bddf=new BDDFeatureExprHack()
+    //
+    //        def toBDD(expr: SATFeatureExpr): /*BDD*/FeatureExpr = {
+    //            expr match {
+    //                case And(clauses) =>
+    //                    clauses.map(toBDD).foldLeft(BDDFeatureExprFactory.True)(_ and _)
+    //                case Or(clauses) =>
+    //                    clauses.map(toBDD).foldLeft(BDDFeatureExprFactory.False)(_ or _)
+    //                case Not(e) =>
+    //                    toBDD(e).not()
+    //                case DefinedExpr(n) => {
+    //                    val bdd = BDDFeatureExprFactory.createDefinedExternal(n.feature)
+    ////                    BDDFeatureExprHack.inc(bdd)
+    //                    bdd
+    //                }
+    ////                case DefinedExpr(n) => bddf.definedExternal(n.feature)
+    //
+    //
+    //            }
+    //        }
+    //
+    //        for (fexpr <- fexprs) {
+    //            println(fexpr)
+    //
+    //            val bdd=toBDD(fexpr)
+    //            println(bdd)
+    ////            BDDFeatureExprHack.free(bdd.asInstanceOf[BDDFeatureExpr])
+    //
+    //            BDDFeatureExprHack.resetBDD
+    //        }
+    //
+    //    }
+    //
 
 }
 

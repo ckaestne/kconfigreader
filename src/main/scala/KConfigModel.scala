@@ -35,16 +35,18 @@ class KConfigModel() {
             (if (!items.contains(MODULES.feature)) List(MODULES.not) else Nil) //if no MODULES item, exclude it explicitly
 
     def getFM: FeatureExpr = {
-        //        var f: FeatureExpr = True
-        //        var d: String = ""
-        //        for (c <- getConstraints) {
-        //            assert((f and c).isSatisfiable(), "unsatisfiable because " + c + ", before \n" + d)
-        //            d = d + "\n"+c
-        //            f = f and c
-        //        }
+
 
         val fm = getConstraints.foldLeft(True)(_ and _)
-        assert(fm.isSatisfiable, "model is not satisfiable")
+        if (fm.isContradiction()) {
+            var f: FeatureExpr = True
+            var d: String = ""
+            for (c <- getConstraints) {
+                assert((f and c).isSatisfiable(), "model is unsatisfiable, because " + c + ", before \n" + d)
+                d = d + "\n"+c
+                f = f and c
+            }
+        }
         fm
     }
 
@@ -168,7 +170,8 @@ case class Item(val name: String, model: KConfigModel) {
     import FExprHelper._
 
     def setDepends(s: Expr) {
-        this.depends = Some(s)
+
+        this.depends = if (depends.isDefined) Some(Or(s, depends.get)) else Some(s)
     }
 
     def setSelectedBy(item: Item, condition: Expr = YTrue()) {
@@ -227,6 +230,7 @@ case class Item(val name: String, model: KConfigModel) {
                 if (tristateChoice) c = MODULES.not implies c
                 result ::= nopromptCond implies c
             } else {
+                //if isNonBoolean
                 for ((defaultvalue, cond) <- defaults) {
                     assert(knownValues contains defaultvalue)
                     val f = getNonBooleanValue(defaultvalue)
@@ -320,22 +324,28 @@ case class Item(val name: String, model: KConfigModel) {
             covered = covered or newCond
         }
 
-        for ((v, expr) <- default.reverse) {
-            v match {
-                case ConstantSymbol("y") if isTristate =>
-                    updateResult("y", expr.fexpr_y)
-                    updateResult("m", expr.fexpr_m)
-                case ConstantSymbol(s) =>
-                    updateResult(s, expr.fexpr_both)
-                case e if isTristate /*any expression is evaluated to y/n/m*/ =>
-                    updateResult("y", And(v, expr).fexpr_y)
-                    updateResult("m", And(v, expr).fexpr_m)
-                case Name(i) if isNonBoolean /*reference to another nonboolean item*/=>
-                //TODO support references to values of other items
-                case e /*any expression is evaluated to y/n/m*/ =>
-                    updateResult("y", And(v, expr).fexpr_both)
+        def addDefaults(defaults: List[(Expr,Expr)], ctx: Expr) {
+            for ((v, e) <- defaults) {
+                val expr = if (ctx==null) e else And(e,ctx)
+                v match {
+                    case ConstantSymbol("y") if isTristate =>
+                        updateResult("y", expr.fexpr_y)
+                        updateResult("m", expr.fexpr_m)
+                    case ConstantSymbol(s) =>
+                        updateResult(s, expr.fexpr_both)
+                    case e if isTristate /*any expression is evaluated to y/n/m*/ =>
+                        updateResult("y", And(v, expr).fexpr_y)
+                        updateResult("m", And(v, expr).fexpr_m)
+                    case Name(i) if isNonBoolean /*reference to another nonboolean item*/=>
+                        addDefaults(i.default, expr)
+                    case e /*any expression is evaluated to y/n/m*/ =>
+                        updateResult("y", And(v, expr).fexpr_both)
+                }
             }
         }
+
+        addDefaults(default.reverse, null)
+
         result
     }
 
@@ -353,7 +363,7 @@ case class Item(val name: String, model: KConfigModel) {
                     result += "y"
                     result += "m"
                 case Name(i) if isNonBoolean /*reference to another nonboolean item*/=>
-                //TODO support references to values of other items
+                    result ++= i.getDefaultValues()
                 case e /*any expression is evaluated to y/n/m*/ =>
                     result += "y"
             }

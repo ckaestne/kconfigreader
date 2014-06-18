@@ -18,7 +18,8 @@ object KConfigReader extends App {
                 """
 
     if (args.length == 0) {
-        println(usage); sys.exit(1)
+        println(usage);
+        sys.exit(1)
     }
     val arglist = args.toList
     type OptionMap = Map[String, String]
@@ -33,6 +34,8 @@ object KConfigReader extends App {
                 nextOption(map ++ Map("writeNonBoolean" -> "1"), tail)
             case "--writeDimacs" :: tail =>
                 nextOption(map ++ Map("writeDimacs" -> "1"), tail)
+            case "--writeCompletedConf" :: tail =>
+                nextOption(map ++ Map("writeCompletedConf" -> "1"), tail)
             case "--reduceConstraints" :: tail =>
                 nextOption(map ++ Map("reduceConstraints" -> "1"), tail)
             case string :: string2 :: Nil if !isSwitch(string) && !isSwitch(string2) => nextOption(map ++ Map("kconfigpath" -> string, "out" -> string2), Nil)
@@ -53,6 +56,7 @@ object KConfigReader extends App {
     val modelFile = new File(out + ".model")
     val dimacsFile = new File(out + ".dimacs")
     val nonboolFile = new File(out + ".nonbool.h")
+    val completedConfFile = new File(out + ".completed.h")
 
     assert(kconfigFile.exists(), "kconfig file does not exist")
 
@@ -91,6 +95,11 @@ object KConfigReader extends App {
     if (options contains "writeDimacs") {
         println("writing dimacs")
         new DimacsWriter().writeAsDimacs2(allconstraints.map(_.asInstanceOf[SATFeatureExpr]), dimacsFile)
+    }
+
+    if (options contains "writeCompletedConf") {
+        println("writing completed.conf")
+        writeCompletedConf(model, completedConfFile)
     }
 
     println("done.")

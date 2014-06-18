@@ -60,8 +60,7 @@ class LinuxTest extends DifferentialTesting {
             println("writing dimacs")
             new DimacsWriter().writeAsDimacs2(allconstraints.map(_.asInstanceOf[SATFeatureExpr]), new File(workingDir, arch + ".dimacs"))
 
-//            println("writing completed.conf")
-//            writeCompletedConf(model, new File(workingDir, arch + ".completedconf.h"))
+
         }
     }
 

@@ -17,7 +17,9 @@ object KConfigReader extends App {
     Usage: kconfigreader [--dumpconf pathToDumpConfTool] [--writeNonBoolean] [--reduceConstraints] [--writeDimacs] pathToKconfigFile out
                 """
 
-    if (args.length == 0) { println(usage); sys.exit(1) }
+    if (args.length == 0) {
+        println(usage); sys.exit(1)
+    }
     val arglist = args.toList
     type OptionMap = Map[String, String]
 
@@ -33,13 +35,13 @@ object KConfigReader extends App {
                 nextOption(map ++ Map("writeDimacs" -> "1"), tail)
             case "--reduceConstraints" :: tail =>
                 nextOption(map ++ Map("reduceConstraints" -> "1"), tail)
-            case string :: string2 :: Nil => nextOption(map ++ Map("kconfigpath" -> string, "out" -> string2), list.tail)
+            case string :: string2 :: Nil if !isSwitch(string) && !isSwitch(string2) => nextOption(map ++ Map("kconfigpath" -> string, "out" -> string2), Nil)
             case option :: tail => println("Unknown option " + option)
+                println(map);
                 sys.exit(1)
         }
     }
     val options = nextOption(Map(), arglist)
-    println(options)
 
 
     val dumpconf = options.getOrElse("dumpconf", "../undertaker/kconfig/dumpconf")

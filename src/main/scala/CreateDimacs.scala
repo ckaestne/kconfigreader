@@ -71,7 +71,7 @@ class DimacsWriter {
         val out = //new OutputStreamWriter())
             new FileWriter(outputFilename)
 
-        for ((f, id) <- varIDs)
+        for ((f, id) <- varIDs; if !(f.feature startsWith "__fresh"))
             out.write("c " + id + " " + f.feature + "\n")
 
         out.write("p cnf " + varIDs.size + " " + clauses + "\n")

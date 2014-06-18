@@ -148,7 +148,11 @@ case class Equals(a: Symbol, b: Symbol) extends Expr {
         case (ConstantSymbol(bb), aa@Name(aai)) if !isbool(aa) => compareNonboolConst(aai, bb)
         //comparing two nonboolean variables (true if they have the same value)
         case (aa@Name(aai), bb@Name(bbi)) if !isbool(aa) && !isbool(bb) => compareNonboolItems(aai, bbi)
-        case (aa,bb)=> assert(false, "unsupported combination: "+aa+"="+bb); False
+        //comparing a boolean to any string other than n/m/y will always return false
+        case (bb@ConstantSymbol(s), aa@Name(n)) if isbool(aa) && !isbool(bb) => System.err.println("Warning: '%s'=%s will always evaluate to false".format(s, n.name)); False
+        case (aa@Name(n), bb@ConstantSymbol(s)) if isbool(aa) && !isbool(bb) => System.err.println("Warning: %s='%s' will always evaluate to false".format(n.name, s)); False
+        // unknown?
+        case (aa, bb) => assert(false, "unsupported combination: " + aa + "=" + bb); False
 
     }
 

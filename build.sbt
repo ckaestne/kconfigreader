@@ -4,9 +4,9 @@ version := "0.0.1"
 
 organization := "de.fosd.typechef"
 
-scalaVersion := "2.10.2"
+scalaVersion := "2.10.4"
 
-// libraryDependencies += "de.fosd.typechef" % "frontend_2.10" % "0.3.4"
+libraryDependencies += "de.fosd.typechef" % "frontend_2.10" % "0.3.6"
 
 libraryDependencies += "org.sat4j" % "org.sat4j.core" % "2.3.1"
 

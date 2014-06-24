@@ -4,7 +4,7 @@ import java.io.{FileWriter, File}
 import scala.sys.process.Process
 import de.fosd.typechef.busybox.DimacsWriter
 import de.fosd.typechef.featureexpr.sat.SATFeatureExpr
-import de.fosd.typechef.featureexpr.{FeatureExprFactory, FeatureExpr}
+import de.fosd.typechef.featureexpr.{FeatureModel, FeatureExprFactory, FeatureExpr}
 import de.fosd.typechef.featureexpr.FeatureExprFactory._
 
 
@@ -35,7 +35,7 @@ object KConfigReader extends App {
             case "--writeDimacs" :: tail =>
                 nextOption(map ++ Map("writeDimacs" -> "1"), tail)
             case "--writeCompletedConf" :: tail =>
-                nextOption(map ++ Map("writeCompletedConf" -> "1"), tail)
+                nextOption(map ++ Map("writeCompletedConf" -> "1", "writeDimacs" -> "1"), tail)
             case "--reduceConstraints" :: tail =>
                 nextOption(map ++ Map("reduceConstraints" -> "1"), tail)
             case string :: string2 :: Nil if !isSwitch(string) && !isSwitch(string2) => nextOption(map ++ Map("kconfigpath" -> string, "out" -> string2), Nil)
@@ -57,6 +57,7 @@ object KConfigReader extends App {
     val dimacsFile = new File(out + ".dimacs")
     val nonboolFile = new File(out + ".nonbool.h")
     val completedConfFile = new File(out + ".completed.h")
+    val openFeatureListFile = new File(out + ".open")
 
     assert(kconfigFile.exists(), "kconfig file does not exist")
 
@@ -99,7 +100,8 @@ object KConfigReader extends App {
 
     if (options contains "writeCompletedConf") {
         println("writing completed.conf")
-        writeCompletedConf(model, completedConfFile)
+        val fm = FeatureExprFactory.dflt.featureModelFactory.createFromDimacsFile(scala.io.Source.fromFile(dimacsFile), x=>x)
+        writeCompletedConf(model, fm, completedConfFile, openFeatureListFile)
     }
 
     println("done.")
@@ -161,18 +163,18 @@ object KConfigReader extends App {
         writer.close()
     }
 
-    def writeCompletedConf(model: KConfigModel, outputfile: File) = {
+    def writeCompletedConf(model: KConfigModel, fm: FeatureModel, outputfile: File, openfile: File) = {
         val writer = new FileWriter(outputfile)
 
-        val fm = model.getFM
 
-        for (feature <- fm.collectDistinctFeatureObjects; if !(feature.feature contains "=")) {
 
-            if ((fm and feature).isContradiction()) {
+        for (feature <- model.getFM.collectDistinctFeatureObjects.toList.sortBy(_.feature); if !(feature.feature contains "=") && !(feature.feature contains "'")) {
+
+            if (feature.isContradiction(fm)) {
                 writer.write("#undef CONFIG_%s\n".format(feature.feature))
                 println("#undef CONFIG_" + feature.feature)
             }
-            else if ((fm andNot feature).isContradiction()) {
+            else if (feature.not.isContradiction(fm)) {
                 writer.write("#define CONFIG_%s\n".format(feature.feature))
                 println("#define CONFIG_" + feature.feature)
             }
@@ -207,3 +209,4 @@ object KConfigReader extends App {
     }
 
 }
+

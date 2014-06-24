@@ -1,0 +1,10 @@
+oneOf(defined(CONFIG_X86_32),defined(CONFIG_64BIT))
+CONFIG_64BIT <=> CONFIG_X86_64
+!defined(CONFIG_SYMBOL_PREFIX)
+oneOf(defined(CONFIG_FLATMEM), defined(CONFIG_DISCONTIGMEM), defined(CONFIG_SPARSEMEM)) //not all in FM!
+(defined(CONFIG_DISCONTIGMEM) => defined(CONFIG_NEED_MULTIPLE_NODES)) //from FM
+(defined(CONFIG_DISCONTIGMEM) => defined(CONFIG_SMP)) //from FM
+(defined(CONFIG_DISCONTIGMEM) => defined(CONFIG_X86_PAE)) //from FM
+(defined(CONFIG_MEMORY_HOTPLUG) => defined(CONFIG_SPARSEMEM)) //from FM
+(defined(CONFIG_HOTPLUG_CPU) => defined(CONFIG_SMP)) //from FM
+(defined(CONFIG_PROC_KCORE) => defined(CONFIG_PROC_FS)) //from FM

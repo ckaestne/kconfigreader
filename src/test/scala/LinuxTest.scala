@@ -2,7 +2,7 @@ package de.fosd.typechef.kconfig
 
 import org.junit._
 import java.io._
-import de.fosd.typechef.featureexpr.{FeatureExpr, FeatureExprFactory}
+import de.fosd.typechef.featureexpr.{FeatureExprParser, FeatureExpr, FeatureExprFactory}
 import scala._
 import FeatureExprFactory._
 import java.net.URI
@@ -10,6 +10,7 @@ import org.sat4j.core.{VecInt, Vec}
 import org.sat4j.specs.IVecInt
 import de.fosd.typechef.busybox.DimacsWriter
 import de.fosd.typechef.featureexpr.sat.{SATFeatureModel, SATFeatureExpr}
+import scala.io.Source
 
 @Ignore
 class LinuxTest extends DifferentialTesting {
@@ -72,6 +73,21 @@ class LinuxTest extends DifferentialTesting {
 
         genAllCombinationsFromPartial(x86kconfig, workingDir, x86model,
             Set(/*"X86_32","X86_64"*/))
+    }
+
+    @Test
+    def approxfmTest() {
+        //approx.fm contained several handwritten constraints that are known to hold in the linux kernel
+
+        val fm = getModel("x86").getFM
+
+        for (line <- Source.fromFile("approx.fm").getLines()) {
+            val lineExpr = new FeatureExprParser().parse(line)
+
+            assert((fm implies lineExpr).isTautology(), "approx.fm line '%s' was not guaranteed by feature model".format(lineExpr))
+        }
+
+
     }
 
     def createFromDimacsFile_2Var(file: URI): SATFeatureModel = createFromDimacsFile_2Var(scala.io.Source.fromFile(file))

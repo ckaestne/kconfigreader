@@ -14,7 +14,7 @@ import de.fosd.typechef.featureexpr.FeatureExprFactory._
 object KConfigReader extends App {
 
     val usage = """
-    Usage: kconfigreader [--dumpconf pathToDumpConfTool] [--writeNonBoolean] [--reduceConstraints] [--writeDimacs] [--writeCompletedConf] pathToKconfigFile out
+    Usage: kconfigreader [--dumpconf pathToDumpConfTool] [--writeNonBoolean] [--reduceConstraints] [--writeDimacs] pathToKconfigFile out
                 """
 
     if (args.length == 0) {
@@ -57,7 +57,6 @@ object KConfigReader extends App {
     val dimacsFile = new File(out + ".dimacs")
     val nonboolFile = new File(out + ".nonbool.h")
     val completedConfFile = new File(out + ".completed.h")
-    val openFeatureListFile = new File(out + ".open")
 
     assert(kconfigFile.exists(), "kconfig file does not exist")
 
@@ -100,7 +99,7 @@ object KConfigReader extends App {
 
     if (options contains "writeCompletedConf") {
         println("writing completed.conf")
-        writeCompletedConf(model, completedConfFile, openFeatureListFile)
+        writeCompletedConf(model, completedConfFile)
     }
 
     println("done.")
@@ -162,9 +161,8 @@ object KConfigReader extends App {
         writer.close()
     }
 
-    def writeCompletedConf(model: KConfigModel, outputfile: File, openfile: File) = {
+    def writeCompletedConf(model: KConfigModel, outputfile: File) = {
         val writer = new FileWriter(outputfile)
-        val openWriter = new FileWriter(openfile)
 
         val fm = model.getFM
 
@@ -177,15 +175,11 @@ object KConfigReader extends App {
             else if ((fm andNot feature).isContradiction()) {
                 writer.write("#define CONFIG_%s\n".format(feature.feature))
                 println("#define CONFIG_" + feature.feature)
-            } else {
-                openWriter.write("CONFIG_" + feature.feature + "\n")
-                println("-> CONFIG_" + feature.feature)
             }
 
         }
 
         writer.close()
-        openWriter.close()
 
     }
 

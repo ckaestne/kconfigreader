@@ -1,10 +1,86 @@
-oneOf(defined(CONFIG_X86_32),defined(CONFIG_64BIT))
-CONFIG_64BIT <=> CONFIG_X86_64
-!defined(CONFIG_SYMBOL_PREFIX)
-oneOf(defined(CONFIG_FLATMEM), defined(CONFIG_DISCONTIGMEM), defined(CONFIG_SPARSEMEM)) //not all in FM!
-(defined(CONFIG_DISCONTIGMEM) => defined(CONFIG_NEED_MULTIPLE_NODES)) //from FM
-(defined(CONFIG_DISCONTIGMEM) => defined(CONFIG_SMP)) //from FM
-(defined(CONFIG_DISCONTIGMEM) => defined(CONFIG_X86_PAE)) //from FM
-(defined(CONFIG_MEMORY_HOTPLUG) => defined(CONFIG_SPARSEMEM)) //from FM
-(defined(CONFIG_HOTPLUG_CPU) => defined(CONFIG_SMP)) //from FM
-(defined(CONFIG_PROC_KCORE) => defined(CONFIG_PROC_FS)) //from FM
+oneOf(defined(X86_32),defined(64BIT))
+64BIT <=> X86_64
+1 // !defined(SYMBOL_PREFIX)
+oneOf(defined(FLATMEM), defined(DISCONTIGMEM), defined(SPARSEMEM)) //not all in FM!
+(defined(DISCONTIGMEM) => defined(NEED_MULTIPLE_NODES)) //from FM
+(defined(DISCONTIGMEM) => defined(SMP)) //from FM
+(defined(DISCONTIGMEM) => defined(X86_PAE)) //from FM
+(defined(MEMORY_HOTPLUG) => defined(SPARSEMEM)) //from FM
+(defined(HOTPLUG_CPU) => defined(SMP)) //from FM
+(defined(PROC_KCORE) => defined(PROC_FS)) //from FM
+(defined(NEED_MULTIPLE_NODES) => defined(SMP)) //from FM
+(defined(BLK_DEV_DRBD) => defined(BLOCK)) //from FM
+(defined(BLK_DEV_INTEGRITY) => defined(BLOCK)) //from FM
+(defined(BLK_DEV_LOOP) => defined(BLOCK)) //from FM
+(defined(BLK_DEV_RAM) => defined(BLOCK)) //from FM
+(defined(BLK_DEV_BSG) => defined(BLOCK)) //from FM
+(defined(BLK_DEV_IO_TRACE) => defined(BLOCK)) //from FM
+(defined(EXT3_FS) => defined(BLOCK)) //from FM
+(defined(EXT4_FS) => defined(BLOCK)) //from FM
+(defined(JBD) => defined(BLOCK)) //from FM
+(defined(JBD2) => defined(BLOCK)) //from FM
+(defined(DM_LOG_USERSPACE) => defined(BLOCK)) //from FM
+(defined(DM_MULTIPATH_ST) => defined(BLOCK)) //from FM
+(defined(MD_FAULTY) => defined(BLOCK)) //from FM
+(defined(MD_LINEAR) => defined(BLOCK)) //from FM
+(defined(BLK_DEV_MD) => defined(BLOCK)) //from FM
+(defined(MD_MULTIPATH) => defined(BLOCK)) //from FM
+(defined(MD_RAID0) => defined(BLOCK)) //from FM
+(defined(MD_RAID10) => defined(BLOCK)) //from FM
+(defined(MD_RAID1) => defined(BLOCK)) //from FM
+(defined(MD_RAID456) => defined(BLOCK)) //from FM
+(defined(NFTL) => defined(BLOCK)) //from FM
+(defined(NILFS2_FS) => defined(BLOCK)) //from FM
+(defined(OCFS2_FS) => defined(BLOCK)) //from FM
+(defined(EXOFS_FS) => defined(BLOCK)) //from FM
+(defined(BOUNCE) => defined(BLOCK)) //from FM
+(defined(I2C_SCMI) => defined(ACPI)) //from FM
+(defined(MD) => defined(BLOCK)) //from FM
+(defined(GFS2_FS) => defined(BLOCK)) //from FM
+(defined(MTD_UBI_DEBUG_PARANOID) => defined(MTD_UBI_DEBUG)) //from FM
+(defined(GENERIC_PENDING_IRQ) => defined(SMP)) //from FM
+(defined(PROVE_LOCKING) => defined(DEBUG_SPINLOCK)) //from FM
+(defined(NET_EMATCH_U32) => defined(NET_EMATCH)) //from FM
+(defined(NET_EMATCH_CMP) => defined(NET_EMATCH)) //from FM
+(defined(NET_EMATCH_META) => defined(NET_EMATCH)) //from FM
+(defined(NET_EMATCH_NBYTE) => defined(NET_EMATCH)) //from FM
+(defined(NET_EMATCH_TEXT) => defined(NET_EMATCH)) //from FM
+(defined(X86_USE_3DNOW) mex defined(KMEMCHECK)) //from FM
+(defined(TOUCHSCREEN_AD7879) => (defined(TOUCHSCREEN_AD7879_I2C) or defined(TOUCHSCREEN_AD7879_SPI))) //from FM
+(defined(TOUCHSCREEN_AD7879) <=> (defined(TOUCHSCREEN_AD7879_I2C) or defined(TOUCHSCREEN_AD7879_SPI))) //from FM
+(defined(NET_EMATCH_CMP) => defined(NET_EMATCH)) //from FM
+(defined(NET_EMATCH_NBYTE) => defined(NET_EMATCH)) //from FM
+(defined(NET_EMATCH_TEXT) => defined(NET_EMATCH)) //from FM
+(defined(NET_EMATCH_U32) => defined(NET_EMATCH)) //from FM
+(defined(DEBUG_LOCK_ALLOC) => defined(LOCKDEP)) //from FM
+(defined(IRQSOFF_TRACER) => defined(TRACE_IRQFLAGS)) //from FM
+1 //atLeastOne(defined(M586), defined(M586TSC), defined(M586MMX),                  defined(M686), defined(MPENTIUMII), defined(MPENTIUMIII), defined(MPENTIUMM), defined(MPENTIUM4),                defined(MK6), defined(MK7), defined(MK8), defined(MCRUSOE), defined(MEFFICEON), defined(MWINCHIPC6),                defined(MWINCHIP3D), defined(MGEODEGX1), defined(MGEODE_LX), defined(MCYRIXIII), defined(MVIAC3_2),                defined(MVIAC7), defined(MCORE2), defined(MATOM))
+(defined(HUGETLBFS) <=> defined(HUGETLB_PAGE)) //from FM
+defined(HOTPLUG_PCI_ACPI) => defined(ACPI)
+defined(X86_32_SMP) => defined(SMP)
+oneOf(defined(SLUB),defined(SLOB),defined(SLAB))//for type checking, temporarily
+oneOf(defined(TREE_RCU),defined(TREE_PREEMPT_RCU),defined(TINY_RCU))//for type checking, temporarily
+def(RFKILL_LEDS) => def(LEDS_TRIGGERS) // not in feature model (bug)
+!(DISCONTIGMEM || NUMA) => !NEED_MULTIPLE_NODES //from FM
+SPARSEMEM_VMEMMAP => X86_64 // from FM (but not in dimacs)
+FUSION_SPI => BLOCK // from FM (indirectly)
+X86_32 || X86_64 // from FM
+!(X86_32 & IA32_EMULATION)
+TOSHIBA_FIR => IRDA && !64BIT
+1 // USB_GADGET <=> (oneOf(USB_ZERO,USB_ZERO_HNPTEST,USB_AUDIO,USB_ETH,USB_ETH_RNDIS,USB_ETH_EEM,USB_GADGETFS,USB_FILE_STORAGE,USB_FILE_STORAGE_TEST,USB_MASS_STORAGE,USB_MASS_STORAGE,USB_MIDI_GADGET,USB_G_PRINTER,USB_CDC_COMPOSITE,USB_G_MULTI,USB_G_MULTI_RNDIS,USB_G_MULTI_CDC)) // problem in FM extraction 
+SCSI => BLOCK //from FM
+X86_32_NON_STANDARD || X86_UP_APIC || SMP || X86_64 => X86_LOCAL_APIC//from fm
+SND => SOUND
+X86_64_SMP=>!X86_32
+ATA => BLOCK
+ATM_NICSTAR => !64BIT
+CISS_SCSI_TAPE => BLOCK
+CDROM_PKTCDVD => BLOCK
+BLK_DEV_IDECD=>BLOCK
+GDROM=>BLOCK
+BLK_DEV_SR=>BLOCK
+PARIDE_PCD=>BLOCK
+CDROM_PKTCDVD=>BLOCK
+FIREWIRE_SBP2=>BLOCK
+IEEE1394_SBP2=>BLOCK
+INFINIBAND_ISER=>BLOCK

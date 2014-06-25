@@ -30,7 +30,6 @@ class LinuxTest extends DifferentialTesting {
     }
 
 
-
     @Test
     @Ignore
     def testLoadLinux() {
@@ -66,8 +65,6 @@ class LinuxTest extends DifferentialTesting {
     }
 
 
-
-
     @Test
     def test32vs64() {
 
@@ -81,9 +78,10 @@ class LinuxTest extends DifferentialTesting {
 
         val fm = getModel("x86").getFM
 
-        for (line <- Source.fromFile("approx.fm").getLines()) {
+        for (lineOrig <- Source.fromFile("src/test/resources/approx.fm").getLines()) {
+            val line = if (lineOrig contains "//") lineOrig.take(lineOrig indexOf "//") else lineOrig
             val lineExpr = new FeatureExprParser().parse(line)
-
+            println(line)
             assert((fm implies lineExpr).isTautology(), "approx.fm line '%s' was not guaranteed by feature model".format(lineExpr))
         }
 
@@ -151,7 +149,6 @@ class LinuxTest extends DifferentialTesting {
             //                        else println("found: " + c)
         }
     }
-
 
 
 }

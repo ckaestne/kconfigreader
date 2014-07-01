@@ -13,6 +13,7 @@ import FeatureExprFactory._
 class RSFReader {
 
 
+
     def readRSF(file: File): KConfigModel = {
         val lines = io.Source.fromFile(file).getLines()
 
@@ -75,6 +76,19 @@ class RSFReader {
             } else
             if (command == "ChoiceItem") {
                 model.getChoice(substrs(2)).addItem(model.getItem(itemName))
+            } else
+            if (command == "Range") {
+                if (model.getItem(itemName)._type == "hex")
+                    System.err.println("warning: ranges not supported for hex values: " + line)
+                else {
+                    var bounds = parseBounds(substrs(2))
+                    if (!bounds.isDefined)
+                        System.err.println("warning: unsupported range (dynamic limits not supported): " + line)
+                    else {
+                        var expr = cleanParseExpr(substrs(3))
+                        model.getItem(itemName).addRange(bounds.get._1,bounds.get._2,expr)
+                    }
+                }
             } else if (!command.startsWith("#"))
                 println(command)
 
@@ -91,6 +105,26 @@ class RSFReader {
         }
         model.findKnownValues
         model
+    }
+
+
+    /**
+     * format "[lower upper]"
+     *
+     * currently only integer numbers are supported for lower and upper bounds,
+     * returning none if it cannot be parsed
+     */
+    def parseBounds(boundStr: String) : Option[(Int,Int)] = {
+        if (boundStr=="") return None
+        if (boundStr.take(2) != "\"[") return None
+        if (boundStr.takeRight(2) != "]\"") return None
+        val s = boundStr.substring(2,boundStr.length-2).split(" ")
+        if (s.length!=2) return None
+        try {
+            return Some((s(0).toInt, s(1).toInt))
+        } catch {
+            case e: NumberFormatException => return None
+        }
     }
 
     class ConstraintParser(fm: KConfigModel) extends RegexParsers {
@@ -160,7 +194,7 @@ class RSFReader {
                             case e: NumberFormatException =>
                                 Name(fm.getItem(s))
                         }
-                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                            
+
                 } |
                 "'" ~> anychar <~ "'" ^^ {
                     ConstantSymbol(_)

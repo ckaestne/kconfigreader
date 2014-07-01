@@ -80,7 +80,12 @@ class KConfigModel() {
                 case "hex" => if (item.default.isEmpty && item.hasPrompt != Not(YTrue())) Set("0x0") else Set("n")
                 case "string" => if (item.default.isEmpty && item.hasPrompt != Not(YTrue())) Set("") else Set("n")
             }
+
+            //add all default values
             item.knownValues ++= item.getDefaultValues
+
+            //add all extreme values of ranges
+            item.knownValues ++= item.ranges.flatMap(range=>Set(range._1.toString,range._2.toString))
         }
 
 
@@ -123,12 +128,12 @@ class KConfigModel() {
 
 case class Item(val name: String, model: KConfigModel) {
 
-
     var _type: String = "boolean"
     var hasPrompt: Expr = Not(YTrue())
     private[kconfig] var default: List[(Expr /*value*/ , Expr /*visible*/ )] = Nil
     var depends: Option[Expr] = None
     var selectedBy: List[(Item, Expr)] = Nil
+    var ranges: List[(Int,Int, Expr)] = Nil
     var isDefined: Boolean = false
     var isChoice: Boolean = false //item is a choice? (used for filtering)
     // an item may be created because it's referenced - when it's never used it is stored as undefined
@@ -263,6 +268,15 @@ case class Item(val name: String, model: KConfigModel) {
             val values = knownValues.map(getNonBooleanValue).toList
             result ::= atLeastOne(values)
             result ++= atMostOneList(values)
+
+            //constraints for ranges
+            for ((lower,upper,expr)<-this.ranges)
+                for (value <- knownValues; if value!="n") {
+                    if (value.toInt < lower)
+                        result ::= expr.fexpr_y implies getNonBooleanValue(value).not
+                    if (value.toInt > upper)
+                        result ::= expr.fexpr_y implies getNonBooleanValue(value).not
+                }
         }
 
         //nonboolean features cannot be "n" if there is a prompt
@@ -398,6 +412,11 @@ case class Item(val name: String, model: KConfigModel) {
 
     def isNonBoolean = !(Set("boolean", "tristate") contains _type)
 
+    def addRange(lower: Int, upper: Int, condition: Expr) = {
+        val newCondition = And(condition, Not(ranges.map(_._3).foldRight[Expr](Not(YTrue()))(Or(_,_))))
+        ranges ::= (lower, upper, newCondition)
+        this
+    }
 
     override def toString = "Item " + name
 }

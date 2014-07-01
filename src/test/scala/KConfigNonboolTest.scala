@@ -27,4 +27,13 @@ class KConfigNonboolTest extends DifferentialTesting {
         checkTestModelBruteForce("src/test/resources/numdep2named.config")
     }
 
+    @Test def testRange() {
+        checkTestModelBruteForce("src/test/resources/range.config")
+    }
+    @Test def testRange2() {
+        checkTestModelBruteForce("src/test/resources/range2.config")
+    }
+    @Test def testRange3() {
+        checkTestModelBruteForce("src/test/resources/range3.config")
+    }
 }

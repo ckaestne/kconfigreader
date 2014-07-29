@@ -9,12 +9,14 @@ import de.fosd.typechef.featureexpr.FeatureExprFactory._
 
 
 /**
- * main class
+ * frontend class, providing an end-user interface to create various files
+ *
+ * needs access to the patched undertaker-dumpconf tool
  */
 object KConfigReader extends App {
 
     val usage = """
-    Usage: kconfigreader [--dumpconf pathToDumpConfTool] [--writeNonBoolean] [--reduceConstraints] [--writeDimacs] pathToKconfigFile out
+    Usage: kconfigreader [--dumpconf pathToDumpConfTool] [--writeNonBoolean] [--reduceConstraints] [--writeCompletedConf] [--writeDimacs] pathToKconfigFile out
                 """
 
     if (args.length == 0) {
@@ -24,6 +26,7 @@ object KConfigReader extends App {
     val arglist = args.toList
     type OptionMap = Map[String, String]
 
+    //simple option parser
     def nextOption(map: OptionMap, list: List[String]): OptionMap = {
         def isSwitch(s: String) = (s(0) == '-')
         list match {
@@ -130,6 +133,9 @@ object KConfigReader extends App {
     }
 
 
+    /**
+     * simple printer that can ensure that every name X is printed as "defined(CONFIG_X)"
+     */
     def formatExpr(s: FeatureExpr): String = if (s.isTautology()) "1"
     else
         s.asInstanceOf[SATFeatureExpr] match {
@@ -144,6 +150,9 @@ object KConfigReader extends App {
                 "!" + formatExpr(e)
         }
 
+    /**
+     * write non-boolean defaults as .h file with #define directives
+     */
     def writeNonBoolean(model: KConfigModel, file: File) = {
         val writer = new FileWriter(file)
 
@@ -164,6 +173,11 @@ object KConfigReader extends App {
         writer.close()
     }
 
+    /**
+     * define all mandatory features in a .h file and undefine all contraditions
+     *
+     * quite expensive operation that requires a SAT call for every feature
+     */
     def writeCompletedConf(model: KConfigModel, fm: FeatureModel, outputfile: File, openfile: File) = {
         val writer = new FileWriter(outputfile)
 
@@ -186,6 +200,16 @@ object KConfigReader extends App {
 
     }
 
+    /**
+     * minimize the number of constraints by removing all constraints that are already
+     * implied by prior constraints
+     *
+     * this reduces the size of a dimacs file by a few percent by removing redundant
+     * constraints.
+     *
+     * this is a very expensive operation, requiring a SAT call for every constraint
+     * on increasingly large feature models
+     */
     def reduceConstraints(fexprs: List[FeatureExpr]): List[FeatureExpr] = {
 
         var result: List[FeatureExpr] = Nil

@@ -37,7 +37,7 @@ class DimacsWriter {
 
     }
 
-    def writeAsDimacs2(fexprs: List[SATFeatureExpr], outputFilename: File) {
+    def writeAsDimacs2(fexprs: List[SATFeatureExpr], outputFilename: File, equisatTransformation: Boolean = true) {
         import de.fosd.typechef.featureexpr.sat._
         import CNFHelper._
 
@@ -53,7 +53,7 @@ class DimacsWriter {
         }
         var clauses = 0
         for (fexpr <- fexprs) {
-            var cnf = fexpr.toCnfEquiSat() //.toCnfEquiSat()
+            var cnf = if (equisatTransformation) fexpr.toCnfEquiSat() else fexpr.toCNF()
 
 
             for (clause <- getCNFClauses(cnf)) {

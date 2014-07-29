@@ -149,7 +149,7 @@ object KConfigReader extends App {
 
         for (item <- model.items.values; if item.isNonBoolean) {
             val defaults = item.getDefaults().filter(_._2.isSatisfiable())
-            val v = if (item._type=="string") "\"%s\"" else "%s"
+            val v = if (item._type==StringType) "\"%s\"" else "%s"
             if (defaults.size == 1)
                 writer.write(("#define CONFIG_%s "+v+"\n").format(item.name, defaults.keys.head))
             else for ((default, fexpr) <- defaults)

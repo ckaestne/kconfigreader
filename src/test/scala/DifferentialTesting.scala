@@ -171,7 +171,7 @@ trait DifferentialTesting {
                 else expr = expr andNot item.fexpr_y
             } else {
                 //nonboolean
-                val v = if (item._type == "string" && value != "n") value.drop(1).dropRight(1) else value //get rid of the quotes for strings
+                val v = if (item._type == StringType && value != "n") value.drop(1).dropRight(1) else value //get rid of the quotes for strings
                 expr = expr and item.getNonBooleanValue(v)
             }
         }
@@ -199,7 +199,7 @@ trait DifferentialTesting {
             val r = explodeConfigs(features.tail)
             val f = features.head
             var values = f.knownValues.toList
-            if (f._type == "string")
+            if (f._type == StringType)
                 values = values.map(s => if (s != "n") "\"" + s + "\"" else s)
             assert(!values.isEmpty)
 
@@ -348,7 +348,7 @@ trait DifferentialTesting {
             else if (f.feature contains "=") {
                 val k = f.feature.take(f.feature.indexOf("="))
                 var v = f.feature.substring(f.feature.indexOf("=") + 1)
-                if (fm.getItem(k)._type == "string" && v != "n")
+                if (fm.getItem(k)._type == StringType && v != "n")
                     v = "\"" + v + "\""
                 result += (k -> v)
             } else

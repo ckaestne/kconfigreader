@@ -43,7 +43,7 @@ class KConfigModel() {
             var d: String = ""
             for (c <- getConstraints) {
                 assert((f and c).isSatisfiable(), "model is unsatisfiable, because " + c + ", before \n" + d)
-                d = d + "\n"+c
+                d = d + "\n" + c
                 f = f and c
             }
         }
@@ -54,8 +54,8 @@ class KConfigModel() {
 
     def getBooleanSymbols: Set[SingleFeatureExpr] = {
         val i = items.values.filterNot(_.isChoice)
-        val boolitems = i.filter(_._type == "boolean")
-        val triitems = i.filter(_._type == "tristate")
+        val boolitems = i.filter(_._type == BoolType)
+        val triitems = i.filter(_._type == TristateType)
         (boolitems.map(_.name) ++ triitems.map(_.name) ++ triitems.map(_.name + "_MODULE")).toSet.map(FeatureExprFactory.createDefinedExternal)
     }
 
@@ -63,29 +63,31 @@ class KConfigModel() {
         (for (i <- items.values; if i.isNonBoolean; v <- i.knownValues) yield i.getNonBooleanValue(v))
 
     def getNonBooleanDefaults: Map[Item, List[(String, Expr)]] =
-        items.values.filter(Set("integer", "hex", "string") contains _._type).map(i => (i -> i.defaultValues)).toMap
+        items.values.filter(_.isNonBoolean).map(i => (i -> i.defaultValues)).toMap
 
     /**
      * this is a global operation that finds possible values for all items
      * should be called after all items are known and before computing constraints
      *
      * known values come from defaults and from literals in comparisons
+     *
+     * should only be called from kconfigreader after all items are read
      */
     def findKnownValues {
         for (item <- items.values) {
             item.knownValues = item._type match {
-                case "boolean" => Set("y", "n")
-                case "tristate" => Set("y", "m", "n")
-                case "integer" => if (item.default.isEmpty && item.hasPrompt != Not(YTrue())) Set("0") else Set("n")
-                case "hex" => if (item.default.isEmpty && item.hasPrompt != Not(YTrue())) Set("0x0") else Set("n")
-                case "string" => if (item.default.isEmpty && item.hasPrompt != Not(YTrue())) Set("") else Set("n")
+                case BoolType => Set("y", "n")
+                case TristateType => Set("y", "m", "n")
+                case IntType => if (item.default.isEmpty && item.hasPrompt != Not(YTrue())) Set("0") else Set("n")
+                case HexType => if (item.default.isEmpty && item.hasPrompt != Not(YTrue())) Set("0x0") else Set("n")
+                case StringType => if (item.default.isEmpty && item.hasPrompt != Not(YTrue())) Set("") else Set("n")
             }
 
             //add all default values
             item.knownValues ++= item.getDefaultValues
 
             //add all extreme values of ranges
-            item.knownValues ++= item.ranges.flatMap(range=>Set(range._1.toString,range._2.toString))
+            item.knownValues ++= item.ranges.flatMap(range => Set(range._1.toString, range._2.toString))
         }
 
 
@@ -128,12 +130,12 @@ class KConfigModel() {
 
 case class Item(val name: String, model: KConfigModel) {
 
-    var _type: String = "boolean"
+    var _type: ItemType = BoolType
     var hasPrompt: Expr = Not(YTrue())
     private[kconfig] var default: List[(Expr /*value*/ , Expr /*visible*/ )] = Nil
     var depends: Option[Expr] = None
     var selectedBy: List[(Item, Expr)] = Nil
-    var ranges: List[(Int,Int, Expr)] = Nil
+    var ranges: List[(Int, Int, Expr)] = Nil
     var isDefined: Boolean = false
     var isChoice: Boolean = false //item is a choice? (used for filtering)
     // an item may be created because it's referenced - when it's never used it is stored as undefined
@@ -151,7 +153,16 @@ case class Item(val name: String, model: KConfigModel) {
     var knownValues: Set[String] = Set()
 
     def setType(_type: String) = {
-        this._type = _type
+        this._type = _type match {
+            case "boolean" => BoolType
+            case "tristate" => TristateType
+            case "integer" => IntType
+            case "hex" => HexType
+            case "string" => StringType
+            case _ => throw new RuntimeException("unsupported item type " + _type)
+        }
+
+
 
         this
     }
@@ -170,7 +181,7 @@ case class Item(val name: String, model: KConfigModel) {
     }
 
     def setChoice() {
-        this.isChoice=true
+        this.isChoice = true
     }
 
     def setDefault(defaultValue: Expr, condition: Expr) {
@@ -270,8 +281,8 @@ case class Item(val name: String, model: KConfigModel) {
             result ++= atMostOneList(values)
 
             //constraints for ranges
-            for ((lower,upper,expr)<-this.ranges)
-                for (value <- knownValues; if value!="n") {
+            for ((lower, upper, expr) <- this.ranges)
+                for (value <- knownValues; if value != "n") {
                     if (value.toInt < lower)
                         result ::= expr.fexpr_y implies getNonBooleanValue(value).not
                     if (value.toInt > upper)
@@ -343,9 +354,9 @@ case class Item(val name: String, model: KConfigModel) {
             covered = covered or newCond
         }
 
-        def addDefaults(defaults: List[(Expr,Expr)], ctx: Expr) {
+        def addDefaults(defaults: List[(Expr, Expr)], ctx: Expr) {
             for ((v, e) <- defaults) {
-                val expr = if (ctx==null) e else And(e,ctx)
+                val expr = if (ctx == null) e else And(e, ctx)
                 v match {
                     case ConstantSymbol("y") if isTristate =>
                         updateResult("y", expr.fexpr_y)
@@ -355,7 +366,7 @@ case class Item(val name: String, model: KConfigModel) {
                     case e if isTristate /*any expression is evaluated to y/n/m*/ =>
                         updateResult("y", And(v, expr).fexpr_y)
                         updateResult("m", And(v, expr).fexpr_m)
-                    case Name(i) if isNonBoolean /*reference to another nonboolean item*/=>
+                    case Name(i) if isNonBoolean /*reference to another nonboolean item*/ =>
                         addDefaults(i.default, expr)
                     case e /*any expression is evaluated to y/n/m*/ =>
                         updateResult("y", And(v, expr).fexpr_both)
@@ -381,7 +392,7 @@ case class Item(val name: String, model: KConfigModel) {
                 case e if isTristate /*any expression is evaluated to y/n/m*/ =>
                     result += "y"
                     result += "m"
-                case Name(i) if isNonBoolean /*reference to another nonboolean item*/=>
+                case Name(i) if isNonBoolean /*reference to another nonboolean item*/ =>
                     result ++= i.getDefaultValues()
                 case e /*any expression is evaluated to y/n/m*/ =>
                     result += "y"
@@ -408,13 +419,13 @@ case class Item(val name: String, model: KConfigModel) {
             )
 
 
-    def isTristate = _type == "tristate"
+    def isTristate = _type == TristateType
 
-    def isNonBoolean = !(Set("boolean", "tristate") contains _type)
+    def isNonBoolean = _type != BoolType && _type!=TristateType
 
     def addRange(lower: Int, upper: Int, condition: Expr) = {
-        val newCondition = And(condition, Not(ranges.map(_._3).foldRight[Expr](Not(YTrue()))(Or(_,_))))
-        ranges ::= (lower, upper, newCondition)
+        val newCondition = And(condition, Not(ranges.map(_._3).foldRight[Expr](Not(YTrue()))(Or(_, _))))
+        ranges ::=(lower, upper, newCondition)
         this
     }
 
@@ -424,7 +435,7 @@ case class Item(val name: String, model: KConfigModel) {
 
 case class Choice(val name: String) {
     var required: String = ""
-    var _type: String = "boolean"
+    var _type: ItemType = BoolType
     var items: List[Item] = Nil
     lazy val fexpr_y = FeatureExprFactory.createDefinedExternal(name)
     lazy val fexpr_m = if (isTristate) FeatureExprFactory.createDefinedExternal(name + "_MODULE") else False
@@ -433,7 +444,11 @@ case class Choice(val name: String) {
     import KConfigModel.MODULES
 
     def setType(_type: String) = {
-        this._type = _type
+        this._type = _type match {
+            case "boolean" => BoolType
+            case "tristate" => TristateType
+            case _ => throw new RuntimeException("unsupported choice type " + _type)
+        }
         this
     }
 
@@ -474,7 +489,7 @@ case class Choice(val name: String) {
         result
     }
 
-    def isTristate = _type == "tristate"
+    def isTristate = _type == TristateType
 }
 
 object FExprHelper {
@@ -496,3 +511,16 @@ object FExprHelper {
         for (a <- elem.tails.take(elem.size); b <- a.tail) yield (a.head, b)
 
 }
+
+
+sealed trait ItemType
+
+object StringType extends ItemType
+
+object IntType extends ItemType
+
+object HexType extends ItemType
+
+object BoolType extends ItemType
+
+object TristateType extends ItemType

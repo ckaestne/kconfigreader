@@ -12,6 +12,12 @@ import de.fosd.typechef.busybox.DimacsWriter
 import de.fosd.typechef.featureexpr.sat.{SATFeatureModel, SATFeatureExpr}
 import scala.io.Source
 
+/**
+ * some test cases that run against the linux feature model
+ *
+ * since this requires a larger setup and quite some time, these
+ * tests are deactived by default
+ */
 @Ignore
 class LinuxTest extends DifferentialTesting {
 

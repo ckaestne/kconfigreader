@@ -3,7 +3,8 @@ package de.fosd.typechef.kconfig
 import org.junit._
 
 /**
- * brute force tests with many small handwritten kconfig files
+ * brute force tests with many small handwritten kconfig files using nonboolean options
+ * (strings, integer, hex, and constraints among them)
  *
  */
 class KConfigNonboolTest extends DifferentialTesting {

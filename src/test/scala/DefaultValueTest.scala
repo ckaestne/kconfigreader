@@ -7,7 +7,10 @@ import FeatureExprFactory._
 import scala._
 import scala.sys.process.Process
 
-class RSFReaderTest {
+/**
+ * tests for the mechanism deriving default values
+ */
+class DefaultValueTest {
 
     def Item(s:String) = new Item(s,null)
 

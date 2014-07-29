@@ -5,6 +5,9 @@ import scala._
 import de.fosd.typechef.featureexpr.FeatureExpr
 import de.fosd.typechef.featureexpr.FeatureExprFactory._
 
+/**
+ * tests for the three-value logic part of the extractor
+ */
 class Logic3Test {
 
     @Test

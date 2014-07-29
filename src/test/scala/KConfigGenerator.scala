@@ -7,6 +7,8 @@ import scala.math._
 
 /**
  * random generator of kconfig files
+ *
+ * (does not seem very useful right now)
  */
 object KConfigGenerator {
 

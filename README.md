@@ -104,3 +104,27 @@ This is likely sufficient for Linux.
 We currently create constraints for each option separately. Select statements are listed under the
 selected statement, not the selecting statement. It would be an straightforward extension to additionally distinguish
 the kind of constraints further and maintain traceability information back to the .rsf file, if desired.
+
+The MODULES option (if used in the model) must be named MODULES. It is matched by name, not
+by the additional Kconfig attribute. (could be changed by modifying both this tool and dumpconf)
+
+
+
+Notes
+====
+
+tristate to CONFIG_x translation:
+
+  ```
+  x=y
+  => #define CONFIG_x
+  => #undef CONFIG_x_MODULE
+
+  x=m
+  => #undef CONFIG_x
+  => #define CONFIG_x_MODULE
+
+  x=n
+  => #undef CONFIG_x
+  => #undef CONFIG_x_MODULE
+  ```

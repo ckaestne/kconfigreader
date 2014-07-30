@@ -44,15 +44,15 @@ class Logic3Test {
 
             val assF = getAssignmentFormula(ass)
 
-            if (result == "y") {
+            if (result == 'y') {
                 assert((f.fexpr_y and assF).isSatisfiable(), (f.fexpr_y and assF) + " not satisfiable")
                 assert((f.fexpr_m and assF).isContradiction())
             }
-            if (result == "m") {
+            if (result == 'm') {
                 assert((f.fexpr_y and assF).isContradiction())
                 assert((f.fexpr_m and assF).isSatisfiable(), (f.fexpr_m and assF) + " not satisfiable")
             }
-            if (result == "n") {
+            if (result == 'n') {
                 assert((f.fexpr_y and assF).isContradiction())
                 assert((f.fexpr_m and assF).isContradiction())
             }

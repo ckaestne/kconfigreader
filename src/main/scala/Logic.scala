@@ -36,15 +36,25 @@ abstract class Expr {
      *
      * Do not rely on this
      */
-    def eval(assignedValues: Set[String]): Boolean
+    def eval(assignedValues: Set[String]): Boolean = eval(s => if (assignedValues contains s) "y" else "n") == 'y'
 
     /**
      * evaluate the expression, where the parameter provides the values
      * (m, n, y, literals, etc) for all options (no quotes)
-     *
-     * returns again a result as string (m, n, y, literal)
      */
-    def eval(assignedValues: Map[String, String]): String
+    def eval(assignedValues: Map[String, String]): Char = eval(s =>
+        if (assignedValues.contains(s))
+            assignedValues(s)
+        else throw new KConfigModelException("value for option %s not provided".format(s))
+    )
+
+    /**
+     * evaluate an expression in 3-value logic (possible values y, m, and n)
+     *
+     * assignment is the lookup function to lookup values of item names
+     */
+    def eval(assignment: String => String): Char
+
 
     /**
      * boolean encoding of three-value logic
@@ -66,9 +76,14 @@ sealed trait Symbol extends Expr {
 
     def kexpr: String
 
-    def eval(assignedValues: Set[String]): Boolean
+    /**
+     * returns the value of a symbol (any literal, including m, n, and y)
+     *
+     * (notice that getValue is different from eval; eval evaluates to y/m/n not to arbitrary values)
+     */
+    def getValue(assignment: String => String): String
 
-    def eval(assignedValues: Map[String, String]): String
+    protected def value2expr(v: String): Char = if (v == "y" || v == "m") v.head else 'n'
 }
 
 /**
@@ -80,9 +95,19 @@ case class ConstantSymbol(v: String) extends Expr with Symbol {
 
     override def kexpr: String = "'" + v + "'"
 
-    def eval(assignedValues: Set[String]): Boolean = v == "y"
+    /**
+     * the value of a constant symbol is its literal
+     */
+    def getValue(assignment: String => String): String = v
 
-    def eval(assignedValues: Map[String, String]): String = v
+    /**
+     * eval to y/m if literal is y/m, otherwise eval to n
+     *
+     * From spec: Convert the symbol into an expression. Boolean and tristate symbols
+     * are simply converted into the respective expression values. All
+     * other symbol types result in 'n'.
+     **/
+    def eval(assignment: String => String): Char = value2expr(v)
 
     lazy val fexpr2: FeatureExpr = if (v == "y") True else False
     override val fexpr_y: FeatureExpr = if (v == "y") True else False
@@ -97,14 +122,13 @@ case class Name(n: Item) extends Expr with Symbol {
 
     def kexpr = n.name
 
-    //true if item name contained in set of assigned values
-    def eval(assignedValues: Set[String]): Boolean = assignedValues.contains(n.name)
+    /**
+     * the value of an item is it's assigned value
+     */
+    def getValue(assignment: String => String): String = assignment(n.name)
 
     //simply lookup the value
-    def eval(assignedValues: Map[String, String]): String =
-        if (assignedValues.contains(n.name))
-            assignedValues(n.name)
-        else throw new KConfigModelException("value for option %s not provided".format(n.name))
+    def eval(assignment: String => String): Char = value2expr(assignment(n.name))
 
     lazy val fexpr_y: FeatureExpr = n.fexpr_y
     //only tristate features can have a satisfiable constraint for fexpr_m
@@ -120,17 +144,16 @@ case class And(a: Expr, b: Expr) extends Expr {
 
     def kexpr = a.kexpr + " && " + b.kexpr
 
-    def eval(v: Set[String]) = a.eval(v) && b.eval(v)
 
     /**
      * evaluation rule for three-value logic, as defined by kconfig
      */
-    def eval(v: Map[String, String]): String = {
+    def eval(v: String => String): Char = {
         val av = a.eval(v)
         val bv = b.eval(v)
-        if (av == "n" || bv == "n") "n"
-        else if (av == "m" || bv == "m") "m"
-        else "y"
+        if (av == 'n' || bv == 'n') 'n'
+        else if (av == 'm' || bv == 'm') 'm'
+        else 'y'
     }
 
     //encoding of the evaluation rules with boolean options, only 'y' if both 'y'
@@ -147,17 +170,15 @@ case class Or(a: Expr, b: Expr) extends Expr {
 
     def kexpr = "(" + a.kexpr + " || " + b.kexpr + ")"
 
-    def eval(v: Set[String]) = a.eval(v) || b.eval(v)
-
     /**
      * evaluation rule for three-value logic, as defined by kconfig
      */
-    def eval(v: Map[String, String]): String = {
+    def eval(v: String => String): Char = {
         val av = a.eval(v)
         val bv = b.eval(v)
-        if (av == "y" || bv == "y") "y"
-        else if (av == "m" || bv == "m") "m"
-        else "n"
+        if (av == 'y' || bv == 'y') 'y'
+        else if (av == 'm' || bv == 'm') 'm'
+        else 'n'
     }
 
     //encoding of the evaluation rules with boolean options, 'y' if either expr yields 'y'
@@ -174,26 +195,21 @@ case class Not(a: Expr) extends Expr {
 
     def kexpr = "!(" + a.kexpr + ")"
 
-    def eval(v: Set[String]) = !a.eval(v)
-
     /**
      * evaluation rule for three-value logic, as defined by kconfig:
      * negation has no effect on m
      */
-    def eval(v: Map[String, String]): String = {
+    def eval(v: String => String): Char = {
         val av = a.eval(v)
-        if (av == "y") "n"
-        else if (av == "n") "y"
-        else "m"
-        //TODO check behavior of negating values other than m/n/y
+        if (av == 'y') 'n'
+        else if (av == 'm') 'm'
+        else 'y'
     }
 
     //boolean encoding of 3-value logic
     lazy val fexpr_y: FeatureExpr = (a.fexpr_y or a.fexpr_m).not
     lazy val fexpr_m: FeatureExpr = a.fexpr_m
 }
-
-
 
 
 /**
@@ -207,10 +223,7 @@ case class Equals(a: Symbol, b: Symbol) extends Expr {
 
     def kexpr = a.kexpr + "=" + b.kexpr
 
-    def eval(v: Set[String]) = a.eval(v) == b.eval(v)
-
-
-    def eval(v: Map[String, String]): String = if (a.eval(v) == b.eval(v)) "y" else "n"
+    def eval(v: String=>String): Char = if (a.getValue(v) == b.getValue(v)) 'y' else 'n'
 
     /**
      * translation of comparison to boolean formulas

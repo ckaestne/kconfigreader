@@ -115,10 +115,15 @@ class RSFReader {
 
         //special encoding for items that are choices
         for (choice <- model.choices.values) {
+            //choices have weired interpretations of prompt constraints and the optional keyword,
+            //that can however be reencoded with the normal item interpretation:
             //all choices are handled as if they are missing prompts and are on by default
             //i.e., they are active unless dependencies prevent it
+            //dependencies attached to prompts are interpreted as normal dependencies instead
             val choiceItem = model.getItem(choice.name)
             choiceItem.tristateChoice = choice.isTristate
+            if (choiceItem.hasPrompt!=Not(YTrue()))
+                choiceItem.setDepends(choiceItem.hasPrompt)
             choiceItem.setPrompt(if (choice.required == "optional") YTrue() else Not(YTrue()))
             choiceItem.default = List((ConstantSymbol("y"), choiceItem.depends.getOrElse(YTrue())))
 

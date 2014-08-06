@@ -106,8 +106,8 @@ class KConfigModel() {
      * should be called after all items are known and before computing constraints
      *
      * known values come from (1) defaults, (2) range expressions, and (3) literals in comparisons in any constraints
-     * (when an option is compared to a literal). 0 or the empty
-     * string are additionally assumed as defaults for int, hex and string items
+     * (when an option is compared to a literal). for all int and hex values 0 and 1 are possible default values
+     * and for all strings "" and "nonempty" are possible default values
      *
      * should only be called from kconfigreader after all items are read
      */
@@ -116,9 +116,9 @@ class KConfigModel() {
             item.knownValues = item._type match {
                 case BoolType => Set("y", "n")
                 case TristateType => Set("y", "m", "n")
-                case IntType => if (item.default.isEmpty && item.hasPrompt != Not(YTrue())) Set("0") else Set("n")
-                case HexType => if (item.default.isEmpty && item.hasPrompt != Not(YTrue())) Set("0x0") else Set("n")
-                case StringType => if (item.default.isEmpty && item.hasPrompt != Not(YTrue())) Set("") else Set("n")
+                case IntType => /*if (item.default.isEmpty && item.hasPrompt != Not(YTrue()))*/ Set("0","1","n") /*else Set("n")*/
+                case HexType => /*if (item.default.isEmpty && item.hasPrompt != Not(YTrue()))*/ Set("0x0","0x1","n") /*else Set("n")*/
+                case StringType => /*if (item.default.isEmpty && item.hasPrompt != Not(YTrue()))*/ Set("","nonempty","n") /*else Set("n")*/
             }
 
             //add all default values

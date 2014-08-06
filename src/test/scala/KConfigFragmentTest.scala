@@ -64,6 +64,10 @@ class KConfigFragmentTest extends DifferentialTesting {
         checkTestModelBruteForce("src/test/resources/int.config")
     }
 
+    @Test @Ignore("issue in `conf --olddefconfig` that doesn't mark invalid configurations correctly") def testInt2() {
+        checkTestModelBruteForce("src/test/resources/int_fail.config")
+    }
+
     @Test def testHex() {
         checkTestModelBruteForce("src/test/resources/hex.config")
     }
@@ -194,6 +198,9 @@ class KConfigFragmentTest extends DifferentialTesting {
 
     @Test def testChoiceDep() {
         checkTestModelBruteForce("src/test/resources/choicedep.config")
+    }
+    @Test def testChoiceDep2() {
+        checkTestModelBruteForce("src/test/resources/choicedep2.config")
     }
     @Test def testDepHidden() {
         checkTestModelBruteForce("src/test/resources/dephidden.config")

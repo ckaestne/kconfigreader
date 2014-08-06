@@ -1,6 +1,5 @@
 package de.fosd.typechef.kconfig
 
-import org.junit._
 import java.io._
 import de.fosd.typechef.featureexpr.{SingleFeatureExpr, FeatureExprFactory, FeatureExpr}
 import FeatureExprFactory._
@@ -25,11 +24,11 @@ import scala.sys.process.Process
 trait DifferentialTesting {
 
     //may be overwritten by specific mixins for specific execution environments
-    def dumpconfTool = "/home/energy/undertaker/scripts/kconfig/dumpconf %s > %s"
+    def dumpconfTool = sys.env.getOrElse("DUMPCONF", "/home/energy/undertaker/scripts/kconfig/dumpconf") + " %s > %s"
 
-    def linuxTreeRoot = "/home/energy/linux/"
+    def linuxTreeRoot = sys.env.getOrElse("LINUXROOT", "/home/energy/linux/")
 
-    def configTool = "/home/energy/kernel/linux-3.11/scripts/kconfig/conf --olddefconfig %s"
+    def configTool = sys.env.getOrElse("CONFTOOL", "/home/energy/kernel/linux-3.11/scripts/kconfig/conf") + " --olddefconfig %s"
 
 
     /**
@@ -48,7 +47,7 @@ trait DifferentialTesting {
         println("**********\n" +
             "** " + kconfigFile)
         println(model.getConstraints.mkString("\n"))
-//        model.items.values.map(i=>println(i.name+": "+i.knownValues.mkString(", ")))
+        //        model.items.values.map(i=>println(i.name+": "+i.knownValues.mkString(", ")))
 
         genAllCombinations(kconfigFile, workingDir, model)
     }

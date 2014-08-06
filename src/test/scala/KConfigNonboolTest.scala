@@ -21,6 +21,26 @@ class KConfigNonboolTest extends DifferentialTesting {
         checkTestModelBruteForce("src/test/resources/stringdep.config")
     }
 
+    @Test def testStringDep2() {
+        checkTestModelBruteForce("src/test/resources/stringdep2.config")
+    }
+
+    @Test def testStringDep3() {
+        checkTestModelBruteForce("src/test/resources/stringdep3.config")
+    }
+    @Test def testStringDep4() {
+        checkTestModelBruteForce("src/test/resources/stringdep4.config")
+    }
+    @Test def testStringDep5() {
+        checkTestModelBruteForce("src/test/resources/stringdep5.config")
+    }
+    @Test def testStringDep6() {
+        checkTestModelBruteForce("src/test/resources/stringdep6.config")
+    }
+    @Test def testStringDep7() {
+        checkTestModelBruteForce("src/test/resources/stringdep7.config")
+    }
+
     @Test def testNumDep2() {
         checkTestModelBruteForce("src/test/resources/numdep2.config")
     }
@@ -39,5 +59,8 @@ class KConfigNonboolTest extends DifferentialTesting {
     }
     @Test def testRange4() {
         checkTestModelBruteForce("src/test/resources/range4.config")
+    }
+    @Test def testHexRange() {
+        checkTestModelBruteForce("src/test/resources/hexrange.config")
     }
 }

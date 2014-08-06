@@ -119,7 +119,7 @@ class RSFReader {
             if (choiceItem.hasPrompt != Not(YTrue()))
                 choiceItem.setDepends(choiceItem.hasPrompt)
             choiceItem.setPrompt(if (choice.required == "optional") YTrue() else Not(YTrue()))
-            choiceItem.default = List((ConstantSymbol("y"), choiceItem.depends.getOrElse(YTrue())))
+            choiceItem.default = List((TristateConstant('y'), choiceItem.depends.getOrElse(YTrue())))
 
         }
 
@@ -207,14 +207,14 @@ class RSFReader {
 
         def symbol: Parser[Symbol] =
             ("y" | "m" | "n") ^^ {
-                s => ConstantSymbol(s)
+                s => TristateConstant(s.head)
             } |
                 ID ^^ {
                     s =>
                         try {
                             s.toInt
                             //if that's successful, it's an integer constant
-                            ConstantSymbol(s)
+                            NonBooleanConstant(s)
                         } catch {
                             case e: NumberFormatException =>
                                 Name(fm.getItem(s))
@@ -222,7 +222,11 @@ class RSFReader {
 
                 } |
                 "'" ~> anychar <~ "'" ^^ {
-                    ConstantSymbol(_)
+                    s =>
+                    //this is a stupid hack because I cannot distinguish between 'y' and y in dumpconf
+                    //not sure if this is even possible in kconfig's internal representation at all
+                        if (Set("y", "m", "n") contains s) TristateConstant(s.head)
+                        else NonBooleanConstant(s)
                 }
 
 

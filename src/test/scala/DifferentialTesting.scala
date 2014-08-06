@@ -113,15 +113,18 @@ trait DifferentialTesting {
         System.err.flush()
         System.out.flush()
         println("!!!!!!!!!!!!!!!!!!")
+        var lastError: String = ""
         result.map(r =>
             if (r._3)
                 println(r._1 + " => " + r._2)
-            else
-                System.err.println(r._1 + " => " + (!r._2) + " by executing kconfig (inferred model states " + r._2 + ")")
+            else {
+                lastError = r._1 + " => " + (!r._2) + " by executing kconfig (inferred model states " + r._2 + ")"
+                System.err.println(lastError)
+            }
         )
         System.err.flush()
         System.out.flush()
-        assert(!result.exists(!_._3), "found configuration inconsistency")
+        assert(!result.exists(!_._3), "found configuration inconsistency: " + lastError)
     }
 
     private def printConfig(config: Map[String, String]): String = {
@@ -197,9 +200,14 @@ trait DifferentialTesting {
         else {
             val r = explodeConfigs(features.tail)
             val f = features.head
-            var values = f.knownValues.toList
+            var values =
+                if (f.isTristate) List("y", "m", "n")
+                else if (!f.isNonBoolean) List("y", "n")
+                else /*nonboolean*/ f.knownNonBooleanValues.toList
             if (f._type == StringType)
-                values = values.map(s => if (s != "n") "\"" + s + "\"" else s)
+                values = values.map("\"" + _ + "\"")
+            if (f.isNonBoolean)
+                values ::= "n"
             assert(!values.isEmpty)
 
             values.flatMap(value =>

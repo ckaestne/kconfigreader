@@ -83,7 +83,13 @@ sealed trait Symbol extends Expr {
      */
     def getValue(assignment: String => String): String
 
-    protected def value2expr(v: String): Char = if (v == "y" || v == "m") v.head else 'n'
+    /**
+     * returns the tristate representation of this symbol (note that this is different from
+     * translating the value)
+     */
+    def getTristate(assignment: String => String): Char
+
+    //    protected def value2expr(v: String): Char = if (v == "y" || v == "m") v.head else 'n'
 }
 
 /**
@@ -91,7 +97,7 @@ sealed trait Symbol extends Expr {
  *
  * boolean encoding as true only if "m" or "y"
  */
-case class ConstantSymbol(v: String) extends Expr with Symbol {
+case class NonBooleanConstant(v: String) extends Expr with Symbol {
 
     override def kexpr: String = "'" + v + "'"
 
@@ -101,18 +107,63 @@ case class ConstantSymbol(v: String) extends Expr with Symbol {
     def getValue(assignment: String => String): String = v
 
     /**
-     * eval to y/m if literal is y/m, otherwise eval to n
-     *
+     * the tristate value is always 'n' independent of the string representation
+     */
+    def getTristate(assignment: String => String): Char = 'n'
+
+
+    /**
      * From spec: Convert the symbol into an expression. Boolean and tristate symbols
      * are simply converted into the respective expression values. All
      * other symbol types result in 'n'.
+     *
+     * Note that nonboolean values result only in y/m by comparing them to other nonboolean values
      **/
-    def eval(assignment: String => String): Char = value2expr(v)
+    def eval(assignment: String => String): Char = getTristate(assignment)
 
+
+    //
     lazy val fexpr2: FeatureExpr = if (v == "y") True else False
     override val fexpr_y: FeatureExpr = if (v == "y") True else False
     override val fexpr_m: FeatureExpr = if (v == "m") True else False
 }
+
+/**
+ * constant literal with value v
+ *
+ * boolean encoding as true only if "m" or "y"
+ */
+case class TristateConstant(v: Char) extends Expr with Symbol {
+
+    override def kexpr: String = "" + v
+
+    /**
+     * the value of a constant symbol is its literal
+     */
+    def getValue(assignment: String => String): String = "" + v
+
+    /**
+     * the value of a constant symbol is its literal
+     */
+    def getTristate(assignment: String => String): Char = v
+
+
+    /**
+     * From spec: Convert the symbol into an expression. Boolean and tristate symbols
+     * are simply converted into the respective expression values. All
+     * other symbol types result in 'n'.
+     *
+     * Note that nonboolean values result only in y/m by comparing them to other nonboolean values
+     **/
+    def eval(assignment: String => String): Char = getTristate(assignment)
+
+
+    //
+    lazy val fexpr2: FeatureExpr = if (v == 'y') True else False
+    override val fexpr_y: FeatureExpr = if (v == 'y') True else False
+    override val fexpr_m: FeatureExpr = if (v == 'm') True else False
+}
+
 
 /**
  * reference to an item, using their values for fexpr_m (tristate only) and fexpr_y
@@ -128,7 +179,14 @@ case class Name(n: Item) extends Expr with Symbol {
     def getValue(assignment: String => String): String = assignment(n.name)
 
     //simply lookup the value
-    def eval(assignment: String => String): Char = value2expr(assignment(n.name))
+    def eval(assignment: String => String): Char = getTristate(assignment)
+
+    def getTristate(assignment: String => String): Char =
+        if (n.isNonBoolean) 'n'
+        else {
+            assert(Set("n", "m", "y") contains assignment(n.name), "invalid value '%s' assigned for %s".format(assignment(n.name), n.name))
+            assignment(n.name).head
+        }
 
     lazy val fexpr_y: FeatureExpr = n.fexpr_y
     //only tristate features can have a satisfiable constraint for fexpr_m
@@ -223,7 +281,7 @@ case class Equals(a: Symbol, b: Symbol) extends Expr {
 
     def kexpr = a.kexpr + "=" + b.kexpr
 
-    def eval(v: String=>String): Char = if (a.getValue(v) == b.getValue(v)) 'y' else 'n'
+    def eval(v: String => String): Char = if (a.getValue(v) == b.getValue(v)) 'y' else 'n'
 
     /**
      * translation of comparison to boolean formulas
@@ -233,15 +291,17 @@ case class Equals(a: Symbol, b: Symbol) extends Expr {
     lazy val fexpr_y: FeatureExpr = {
 
         def isbool(a: Symbol) = a match {
-            case ConstantSymbol(s) if !(Set("y", "m", "n") contains s) => false
+            case TristateConstant(_) => true
+            case NonBooleanConstant(_) => false
             case Name(i) if (i.isNonBoolean) => false
             case _ => true
         }
 
         def compareNonboolConst(item: Item, value: String): FeatureExpr = {
-            if (!(item.knownValues contains value))
-                item.knownValues += value
-            item.getNonBooleanValue(value)
+            if (!(item.knownNonBooleanValues contains value))
+                item.knownNonBooleanValues += value
+            if (value == "") item.getNonBooleanValue(value) or item.getNonBooleanValue("n")
+            else item.getNonBooleanValue(value)
         }
 
         /**
@@ -249,7 +309,7 @@ case class Equals(a: Symbol, b: Symbol) extends Expr {
          * (e.g., A.1=B.1 or A.2=B.2...)
          */
         def compareNonboolItems(item1: Item, item2: Item): FeatureExpr = {
-            val sharedValues = item1.knownValues intersect item2.knownValues
+            val sharedValues = item1.knownNonBooleanValues intersect item2.knownNonBooleanValues
             val pairs = for (sharedValue <- sharedValues) yield
                 item1.getNonBooleanValue(sharedValue) and item2.getNonBooleanValue(sharedValue)
             pairs.foldLeft(False)(_ or _)
@@ -266,18 +326,25 @@ case class Equals(a: Symbol, b: Symbol) extends Expr {
 
         (a, b) match {
             //comparing two constants is easy
-            case (ConstantSymbol(aa), ConstantSymbol(bb)) => if (aa == bb) True else False
+            case (TristateConstant(aa), TristateConstant(bb)) => if (aa == bb) True else False
+            case (NonBooleanConstant(aa), NonBooleanConstant(bb)) => if (aa == bb) True else False
             //comparing two boolean/tristate options (including y/m/n constants) is well established
             case (aa, bb) if isbool(a) && isbool(b) => boolequiv(aa, bb)
             //comparing nonboolean options actually requires a deeper comparison
             //comparing variable against constant
-            case (aa@Name(aai), ConstantSymbol(bb)) if !isbool(aa) => compareNonboolConst(aai, bb)
-            case (ConstantSymbol(bb), aa@Name(aai)) if !isbool(aa) => compareNonboolConst(aai, bb)
+            case (aa@Name(aai), NonBooleanConstant(bb)) if !isbool(aa) => compareNonboolConst(aai, bb)
+            case (NonBooleanConstant(bb), aa@Name(aai)) if !isbool(aa) => compareNonboolConst(aai, bb)
+            //comparing nonboolean items with tristate constants will never return true
+            case (aa@Name(aai), TristateConstant(bb)) if !isbool(aa) => System.err.println("Warning: %s='%s' will always evaluate to false".format(aai.name, bb)); False
+            case (TristateConstant(bb), aa@Name(aai)) if !isbool(aa) => System.err.println("Warning: '%s'=%s will always evaluate to false".format(bb, aai.name)); False
             //comparing two nonboolean variables (true if they have the same value)
             case (aa@Name(aai), bb@Name(bbi)) if !isbool(aa) && !isbool(bb) => compareNonboolItems(aai, bbi)
-            //comparing a boolean to any string other than n/m/y will always return false
-            case (bb@ConstantSymbol(s), aa@Name(n)) if isbool(aa) && !isbool(bb) => System.err.println("Warning: '%s'=%s will always evaluate to false".format(s, n.name)); False
-            case (aa@Name(n), bb@ConstantSymbol(s)) if isbool(aa) && !isbool(bb) => System.err.println("Warning: %s='%s' will always evaluate to false".format(n.name, s)); False
+            //comparing a boolean item to any nonboolean constant will always return false
+            case (bb@NonBooleanConstant(s), aa@Name(n)) if isbool(aa) && !isbool(bb) => System.err.println("Warning: '%s'=%s will always evaluate to false".format(s, n.name)); False
+            case (aa@Name(n), bb@NonBooleanConstant(s)) if isbool(aa) && !isbool(bb) => System.err.println("Warning: %s='%s' will always evaluate to false".format(n.name, s)); False
+            //more useless comparisons
+            case (NonBooleanConstant(a), TristateConstant(b)) => System.err.println("Warning: '%s'=%s will always evaluate to false".format(a, b)); False
+            case (TristateConstant(b), NonBooleanConstant(a)) => System.err.println("Warning: %s='%s' will always evaluate to false".format(b, a)); False
             // unknown?
             case (aa, bb) => throw new KConfigModelException("unsupported combination: " + aa + "=" + bb)
         }
@@ -300,12 +367,12 @@ object Implies {
  * helper object for 'y' constants
  */
 object YTrue {
-    def apply() = ConstantSymbol("y")
+    def apply() = TristateConstant('y')
 }
 
 /**
  * helper object for 'm' constants
  */
 object MTrue {
-    def apply() = ConstantSymbol("m")
+    def apply() = TristateConstant('m')
 }

@@ -2,9 +2,8 @@ package de.fosd.typechef.kconfig
 
 import org.junit._
 import java.io._
-import de.fosd.typechef.featureexpr.{FeatureExprParser, FeatureExpr, FeatureExprFactory}
+import de.fosd.typechef.featureexpr.FeatureExprParser
 import scala._
-import FeatureExprFactory._
 import java.net.URI
 import org.sat4j.core.{VecInt, Vec}
 import org.sat4j.specs.IVecInt
@@ -77,6 +76,14 @@ class LinuxTest extends DifferentialTesting {
         genAllCombinationsFromPartial(x86kconfig, workingDir, x86model,
             Set(/*"X86_32","X86_64"*/))
     }
+
+    @Test
+    def test_INITRAMFS_COMPRESSION_GZIP() {
+
+        genAllCombinationsFromPartial(x86kconfig, workingDir, x86model,
+            Set("INITRAMFS_COMPRESSION_GZIP"))
+    }
+
 
     @Test
     def approxfmTest() {

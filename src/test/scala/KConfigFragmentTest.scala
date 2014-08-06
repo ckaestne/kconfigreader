@@ -1,7 +1,6 @@
 package de.fosd.typechef.kconfig
 
 import org.junit._
-import de.fosd.typechef.featureexpr.FeatureExpr
 
 /**
  * brute force tests with many small handwritten kconfig files
@@ -9,48 +8,48 @@ import de.fosd.typechef.featureexpr.FeatureExpr
  */
 class KConfigFragmentTest extends DifferentialTesting {
 
-    @Test def testMiniKConfig() {
+    @Test def testMiniK() {
         checkTestModelBruteForce("src/test/resources/mini.config")
     }
 
-    @Test def testMini2KConfig() {
+    @Test def testMini2K() {
         checkTestModelBruteForce("src/test/resources/mini2.config")
     }
 
-    @Test def testMini3KConfig() {
+    @Test def testMini3K() {
         checkTestModelBruteForce("src/test/resources/mini3.config")
     }
 
-    @Test def testDepKConfig() {
+    @Test def testDepK() {
         checkTestModelBruteForce("src/test/resources/dep.config")
     }
 
-    @Test def testSelKConfig() {
+    @Test def testSelK() {
         checkTestModelBruteForce("src/test/resources/sel.config")
     }
 
-    @Test def testSelHiddenKConfig() {
+    @Test def testSelHiddenK() {
         checkTestModelBruteForce("src/test/resources/selhidden.config")
     }
 
 
-    @Test def testSelHidden2KConfig() {
+    @Test def testSelHidden2K() {
         checkTestModelBruteForce("src/test/resources/selhidden2.config")
     }
 
-    @Test def testSelHidden3KConfig() {
+    @Test def testSelHidden3K() {
         checkTestModelBruteForce("src/test/resources/selhidden3.config")
     }
 
-    @Test def testSelHidden4KConfig() {
+    @Test def testSelHidden4K() {
         checkTestModelBruteForce("src/test/resources/selhidden4.config")
     }
 
-    @Test def testSelHidden5KConfig() {
+    @Test def testSelHidden5K() {
         checkTestModelBruteForce("src/test/resources/selhidden5.config")
     }
 
-    @Test def testChoiceKConfig() {
+    @Test def testChoice() {
         checkTestModelBruteForce("src/test/resources/choice.config")
     }
 
@@ -133,24 +132,24 @@ class KConfigFragmentTest extends DifferentialTesting {
     }
 
 
-    @Test def testTriSelHiddenKConfig() {
+    @Test def testTriSelHiddenK() {
         checkTestModelBruteForce("src/test/resources/triselhidden.config")
     }
 
 
-    @Test def testTriSelHidden2KConfig() {
+    @Test def testTriSelHidden2K() {
         checkTestModelBruteForce("src/test/resources/triselhidden2.config")
     }
 
-    @Test def testTriSelHidden3KConfig() {
+    @Test def testTriSelHidden3K() {
         checkTestModelBruteForce("src/test/resources/triselhidden3.config")
     }
 
-    @Test def testTriSelHidden4KConfig() {
+    @Test def testTriSelHidden4K() {
         checkTestModelBruteForce("src/test/resources/triselhidden4.config")
     }
 
-    @Test def testTriSelHidden5KConfig() {
+    @Test def testTriSelHidden5K() {
         checkTestModelBruteForce("src/test/resources/triselhidden5.config")
     }
 

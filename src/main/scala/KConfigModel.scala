@@ -93,7 +93,7 @@ class KConfigModel() {
      * call only after the model has been initialized fully with findKnownValues
      */
     def getAllSymbols: Set[SingleFeatureExpr] = getBooleanSymbols ++
-        (for (i <- items.values; if i.isNonBoolean; v <- i.knownValues) yield i.getNonBooleanValue(v))
+        (for (i <- items.values; if i.isNonBoolean; v <- i.knownNonBooleanValues) yield i.getNonBooleanValue(v))
 
     /**
      * helper function to access all default values of all nonboolean options (and their corresponding conditions)
@@ -113,19 +113,23 @@ class KConfigModel() {
      */
     def findKnownValues {
         for (item <- items.values) {
-            item.knownValues = item._type match {
-                case BoolType => Set("y", "n")
-                case TristateType => Set("y", "m", "n")
-                case IntType => /*if (item.default.isEmpty && item.hasPrompt != Not(YTrue()))*/ Set("0","1","n") /*else Set("n")*/
-                case HexType => /*if (item.default.isEmpty && item.hasPrompt != Not(YTrue()))*/ Set("0x0","0x1","n") /*else Set("n")*/
-                case StringType => /*if (item.default.isEmpty && item.hasPrompt != Not(YTrue()))*/ Set("","nonempty","n") /*else Set("n")*/
+            item.knownNonBooleanValues = item._type match {
+                case BoolType => Set()
+                case TristateType => Set()
+                case IntType => Set("0", "1")
+                case HexType => Set("0x0", "0x1")
+                case StringType => Set("", "nonempty")
             }
 
             //add all default values
-            item.knownValues ++= item.getDefaultValues
+            item.knownNonBooleanValues ++= item.getNonBooleanDefaults()
 
             //add all extreme values of ranges
-            item.knownValues ++= item.ranges.flatMap(range => Set(range._1.toString, range._2.toString))
+            item.knownNonBooleanValues ++=
+                (if (item.isHex)
+                    item.ranges.flatMap(range => Set(Integer.toHexString(range._1), Integer.toHexString(range._2)))
+                else
+                    item.ranges.flatMap(range => Set(range._1.toString, range._2.toString)))
         }
 
 
@@ -133,10 +137,10 @@ class KConfigModel() {
             case And(a, b) => findValues(a); findValues(b)
             case Or(a, b) => findValues(a); findValues(b)
             case Not(a) => findValues(a)
-            case Equals(Name(n), ConstantSymbol(v)) =>
-                n.knownValues += v
-            case Equals(ConstantSymbol(v), Name(n)) =>
-                n.knownValues += v
+            case Equals(Name(n), NonBooleanConstant(v)) if n.isNonBoolean =>
+                n.knownNonBooleanValues += v
+            case Equals(NonBooleanConstant(v), Name(n)) if n.isNonBoolean =>
+                n.knownNonBooleanValues += v
             case _ =>
         }
 
@@ -167,7 +171,6 @@ class KConfigModelException(msg: String) extends Exception(msg)
  * => #undef CONFIG_x
  * => #undef CONFIG_x_MODULE
  *
- * @param name
  */
 
 
@@ -216,21 +219,20 @@ case class Item(val name: String, model: KConfigModel) {
      * this is nontrivial: y is the options name or a disjunction of all values for nonbooleans
      * m is x_MODULE for tristate options or false otherwise
      */
-    lazy val fexpr_y = if (isNonBoolean) fexpr_nonboolean
-    else FeatureExprFactory.createDefinedExternal(name)
+    lazy val fexpr_y = if (isNonBoolean) False else FeatureExprFactory.createDefinedExternal(name)
     lazy val modulename = if (isTristate) this.name + "_MODULE" else name
     lazy val fexpr_m = if (isTristate) FeatureExprFactory.createDefinedExternal(modulename) else False
     lazy val fexpr_both = if (isTristate) (fexpr_y or fexpr_m) else fexpr_y
 
-    private def fexpr_nonboolean = knownValues.filterNot(_ == "n").map(getNonBooleanValue).foldLeft(False)(_ or _)
+    private def fexpr_nonboolean = knownNonBooleanValues.map(getNonBooleanValue).foldLeft(False)(_ or _) //without n
 
     def getNonBooleanValue(value: String): SingleFeatureExpr = FeatureExprFactory.createDefinedExternal(name + "=" + value)
 
     /**
-     * list of known values of this item. collected by KConfigModel.findKnownValues at the
+     * list of known nonboolean values of this item. collected by KConfigModel.findKnownValues at the
      * end of the initialization
      */
-    var knownValues: Set[String] = Set()
+    var knownNonBooleanValues: Set[String] = Set()
 
     /**
      * set the type to one of 5 supported types
@@ -330,7 +332,7 @@ case class Item(val name: String, model: KConfigModel) {
                 result ::= this.fexpr_y implies depends.get.fexpr_y
                 result ::= this.fexpr_m implies depends.get.fexpr_both
             } else
-                result ::= this.fexpr_y implies depends.get.fexpr_both
+                result ::= (if (isNonBoolean) this.fexpr_nonboolean else this.fexpr_y) implies depends.get.fexpr_both
         }
 
         //invisible options
@@ -358,7 +360,7 @@ case class Item(val name: String, model: KConfigModel) {
             } else {
                 //if nonboolean
                 val default_any = defaults.map(_._2).foldLeft(False)(_ or _)
-                result ::= nopromptCond implies ((default_any.not implies selectedBy.foldLeft(this.fexpr_y.not)((expr, sel) => (sel._1.fexpr_both and sel._2.fexpr_both) or expr)))
+                result ::= nopromptCond implies ((default_any.not implies selectedBy.foldLeft(this.fexpr_nonboolean.not)((expr, sel) => (sel._1.fexpr_both and sel._2.fexpr_both) or expr)))
             }
 
             //if invisible and on by default, then can only be deactivated by dependencies (== default conditions)
@@ -374,7 +376,7 @@ case class Item(val name: String, model: KConfigModel) {
             } else {
                 //if isNonBoolean
                 for ((defaultvalue, cond) <- defaults) {
-                    assert(knownValues contains defaultvalue)
+                    //                    assert(knownNonBooleanValues contains defaultvalue)
                     val f = getNonBooleanValue(defaultvalue)
                     result ::= nopromptCond implies (cond implies f)
                 }
@@ -397,13 +399,13 @@ case class Item(val name: String, model: KConfigModel) {
         //in nonboolean options, we create one feature per known value
         //all these are disjunct and one needs to be selected
         if (isNonBoolean) {
-            val values = knownValues.map(getNonBooleanValue).toList
+            val values = (knownNonBooleanValues + "n").map(getNonBooleanValue).toList
             result ::= atLeastOne(values)
             result ++= atMostOneList(values)
 
             //constraints for ranges
             for ((lower, upper, expr) <- this.ranges)
-                for (value <- knownValues; if value != "n") {
+                for (value <- knownNonBooleanValues /*without n*/ ) {
                     val v = if (isHex) Integer.parseInt(value, 16) else value.toInt
                     if (v < lower)
                         result ::= expr.fexpr_y implies getNonBooleanValue(value).not
@@ -413,7 +415,7 @@ case class Item(val name: String, model: KConfigModel) {
         }
 
         //nonboolean features cannot be "n" if there is a prompt
-        if (isNonBoolean && (knownValues contains "n")) {
+        if (isNonBoolean) {
             result ::= promptCondition.fexpr_both implies getNonBooleanValue("n").not
         }
 
@@ -432,11 +434,13 @@ case class Item(val name: String, model: KConfigModel) {
 
         for ((v, expr) <- default.reverse) {
             v match {
-                case ConstantSymbol("y") if isTristate =>
-                    result ::=("y", And(YTrue(), expr))
+                case TristateConstant('y') if isTristate =>
+                result ::=("y", And(YTrue(), expr))
                     result ::=("m", And(MTrue(), expr))
-                case ConstantSymbol(s) =>
-                    result ::=(s, expr)
+                case TristateConstant(s) =>
+                    result ::=("" + s, expr)
+                case NonBooleanConstant(s) =>
+                result ::=(s, expr)
                 case e if isTristate /*any expression is evaluated to y/n/m*/ =>
                     result ::=("y", And(YTrue(), And(v, expr)))
                     result ::=("m", And(MTrue(), And(v, expr)))
@@ -472,11 +476,13 @@ case class Item(val name: String, model: KConfigModel) {
             for ((v, e) <- defaults) {
                 val expr = if (ctx == null) e else And(e, ctx)
                 v match {
-                    case ConstantSymbol("y") if isTristate =>
-                        updateResult("y", expr.fexpr_y)
+                    case TristateConstant('y') if isTristate =>
+                    updateResult("y", expr.fexpr_y)
                         updateResult("m", expr.fexpr_m)
-                    case ConstantSymbol(s) =>
-                        updateResult(s, expr.fexpr_both)
+                    case TristateConstant(s) =>
+                        updateResult("" + s, expr.fexpr_both)
+                    case NonBooleanConstant(s) =>
+                    updateResult(s, expr.fexpr_both)
                     case e if isTristate /*any expression is evaluated to y/n/m*/ =>
                         updateResult("y", And(v, expr).fexpr_y)
                         updateResult("m", And(v, expr).fexpr_m)
@@ -501,11 +507,13 @@ case class Item(val name: String, model: KConfigModel) {
 
         for ((v, expr) <- default.reverse) {
             v match {
-                case ConstantSymbol("y") if isTristate =>
-                    result += "y"
+                case TristateConstant('y') if isTristate =>
+                result += "y"
                     result += "m"
-                case ConstantSymbol(s) =>
-                    result += s
+                case TristateConstant(s) =>
+                    result += "" + s
+                case NonBooleanConstant(s) =>
+                result += s
                 case e if isTristate /*any expression is evaluated to y/n/m*/ =>
                     result += "y"
                     result += "m"
@@ -517,6 +525,20 @@ case class Item(val name: String, model: KConfigModel) {
         }
         result
     }
+
+    /**
+     * compute the set of all possible nonboolean default values
+     */
+    def getNonBooleanDefaults(): Set[String] = {
+        for ((v, expr) <- default.reverse) yield
+            v match {
+                case NonBooleanConstant(s) =>
+                    Set(s)
+                case Name(i) if isNonBoolean /*reference to another nonboolean item*/ =>
+                    i.getDefaultValues()
+                case _ => Set()
+            }
+    }.foldRight(Set[String]())(_ ++ _)
 
 
     def getDefault_y(defaults: Map[String, FeatureExpr]) =

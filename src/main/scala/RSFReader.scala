@@ -4,8 +4,6 @@ import java.io.File
 import util.parsing.combinator._
 import util.matching.Regex
 import scala.Some
-import de.fosd.typechef.featureexpr.{FeatureExprFactory, FeatureExpr}
-import FeatureExprFactory._
 
 /**
  * reads the output of undertaker-dumpconf files
@@ -96,16 +94,12 @@ class RSFReader {
             } else
             if (command == "Range") {
                 //range constraints for hex and int
-                if (model.getItem(itemName)._type == HexType)
-                    System.err.println("warning: ranges not supported for hex values: " + line)
+                var bounds = parseBounds(substrs(2), model.getItem(itemName).isHex)
+                if (!bounds.isDefined)
+                    System.err.println("warning: unsupported range (dynamic limits not supported): " + line)
                 else {
-                    var bounds = parseBounds(substrs(2))
-                    if (!bounds.isDefined)
-                        System.err.println("warning: unsupported range (dynamic limits not supported): " + line)
-                    else {
-                        var expr = cleanParseExpr(substrs(3))
-                        model.getItem(itemName).addRange(bounds.get._1, bounds.get._2, expr)
-                    }
+                    var expr = cleanParseExpr(substrs(3))
+                    model.getItem(itemName).addRange(bounds.get._1, bounds.get._2, expr)
                 }
             } else if (!command.startsWith("#")) // comments
                 println(command)
@@ -122,7 +116,7 @@ class RSFReader {
             //dependencies attached to prompts are interpreted as normal dependencies instead
             val choiceItem = model.getItem(choice.name)
             choiceItem.tristateChoice = choice.isTristate
-            if (choiceItem.hasPrompt!=Not(YTrue()))
+            if (choiceItem.hasPrompt != Not(YTrue()))
                 choiceItem.setDepends(choiceItem.hasPrompt)
             choiceItem.setPrompt(if (choice.required == "optional") YTrue() else Not(YTrue()))
             choiceItem.default = List((ConstantSymbol("y"), choiceItem.depends.getOrElse(YTrue())))
@@ -141,14 +135,16 @@ class RSFReader {
      * currently only integer numbers are supported for lower and upper bounds,
      * returning none if it cannot be parsed
      */
-    def parseBounds(boundStr: String): Option[(Int, Int)] = {
+    def parseBounds(boundStr: String, isHex: Boolean): Option[(Int, Int)] = {
+        def convert(v: String): Int = if (isHex) Integer.parseInt(v, 16) else v.toInt
+
         if (boundStr == "") return None
         if (boundStr.take(2) != "\"[") return None
         if (boundStr.takeRight(2) != "]\"") return None
         val s = boundStr.substring(2, boundStr.length - 2).split(" ")
         if (s.length != 2) return None
         try {
-            return Some((s(0).toInt, s(1).toInt))
+            return Some((convert(s(0)), convert(s(1))))
         } catch {
             case e: NumberFormatException => return None
         }
@@ -210,7 +206,9 @@ class RSFReader {
                 }
 
         def symbol: Parser[Symbol] =
-            ("y" | "m" | "n") ^^ { s => ConstantSymbol(s)} |
+            ("y" | "m" | "n") ^^ {
+                s => ConstantSymbol(s)
+            } |
                 ID ^^ {
                     s =>
                         try {

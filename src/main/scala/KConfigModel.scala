@@ -250,6 +250,7 @@ case class Item(val name: String, model: KConfigModel) {
     def isTristate = _type == TristateType
 
     def isNonBoolean = _type != BoolType && _type != TristateType
+    def isHex = _type == HexType
 
     /**
      * an item is defined if it is explicitly occuring in the kconfig model (in contrast
@@ -403,9 +404,10 @@ case class Item(val name: String, model: KConfigModel) {
             //constraints for ranges
             for ((lower, upper, expr) <- this.ranges)
                 for (value <- knownValues; if value != "n") {
-                    if (value.toInt < lower)
+                    val v = if (isHex) Integer.parseInt(value, 16) else value.toInt
+                    if (v < lower)
                         result ::= expr.fexpr_y implies getNonBooleanValue(value).not
-                    if (value.toInt > upper)
+                    if (v > upper)
                         result ::= expr.fexpr_y implies getNonBooleanValue(value).not
                 }
         }

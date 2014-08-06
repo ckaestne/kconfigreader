@@ -127,7 +127,7 @@ class KConfigModel() {
             //add all extreme values of ranges
             item.knownNonBooleanValues ++=
                 (if (item.isHex)
-                    item.ranges.flatMap(range => Set(Integer.toHexString(range._1), Integer.toHexString(range._2)))
+                    item.ranges.flatMap(range => Set("0x" + Integer.toHexString(range._1), "0x" + Integer.toHexString(range._2)))
                 else
                     item.ranges.flatMap(range => Set(range._1.toString, range._2.toString)))
         }
@@ -406,7 +406,7 @@ case class Item(val name: String, model: KConfigModel) {
             //constraints for ranges
             for ((lower, upper, expr) <- this.ranges)
                 for (value <- knownNonBooleanValues /*without n*/ ) {
-                    val v = if (isHex) Integer.parseInt(value, 16) else value.toInt
+                    val v = if (isHex) Integer.parseInt(value.drop(2), 16) else value.toInt
                     if (v < lower)
                         result ::= expr.fexpr_y implies getNonBooleanValue(value).not
                     if (v > upper)

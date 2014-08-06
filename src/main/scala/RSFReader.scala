@@ -136,7 +136,7 @@ class RSFReader {
      * returning none if it cannot be parsed
      */
     def parseBounds(boundStr: String, isHex: Boolean): Option[(Int, Int)] = {
-        def convert(v: String): Int = if (isHex) Integer.parseInt(v, 16) else v.toInt
+        def convert(v: String): Int = if (isHex) Integer.parseInt(v.drop(2), 16) else v.toInt
 
         if (boundStr == "") return None
         if (boundStr.take(2) != "\"[") return None

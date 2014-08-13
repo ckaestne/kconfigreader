@@ -30,6 +30,8 @@ class LinuxTest extends DifferentialTesting {
         new DimacsWriter().writeAsDimacs2(x86model.getConstraints.map(_.asInstanceOf[SATFeatureExpr]), dimacsfile)
         FeatureExprFactory.dflt.featureModelFactory.createFromDimacsFilePrefix(dimacsfile.getAbsolutePath, "")
     }
+    lazy val armmodel = getModel("arm")
+    lazy val armkconfig = kconfigFile("arm")
 
 
     def getModel(arch: String): KConfigModel = {
@@ -98,6 +100,12 @@ class LinuxTest extends DifferentialTesting {
             Set("INITRAMFS_COMPRESSION_GZIP"))
     }
 
+
+    @Test
+    def testArm() {
+        genAllCombinationsFromPartial(armkconfig, workingDir, armmodel,
+            Set())
+    }
 
 
     @Test

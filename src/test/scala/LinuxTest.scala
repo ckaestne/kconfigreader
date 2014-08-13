@@ -2,9 +2,8 @@ package de.fosd.typechef.kconfig
 
 import org.junit._
 import java.io._
-import de.fosd.typechef.featureexpr.FeatureExprParser
+import de.fosd.typechef.featureexpr.{FeatureModel, FeatureExpr, FeatureExprFactory, FeatureExprParser}
 import scala._
-import java.net.URI
 import org.sat4j.core.{VecInt, Vec}
 import org.sat4j.specs.IVecInt
 import de.fosd.typechef.busybox.DimacsWriter
@@ -20,12 +19,18 @@ import scala.io.Source
 @Ignore
 class LinuxTest extends DifferentialTesting {
 
+    def kconfigFile(arch: String) = "arch/" + arch + "/Kconfig"
+    val workingDir = new File(linuxTreeRoot)
+
     lazy val x86model = getModel("x86")
     lazy val x86kconfig = kconfigFile("x86")
+    lazy val x86fm: FeatureExpr = x86model.getFM
+    lazy val x86fm_dimacs: FeatureModel = {
+        val dimacsfile = new File(workingDir, "x86.dimacs")
+        new DimacsWriter().writeAsDimacs2(x86model.getConstraints.map(_.asInstanceOf[SATFeatureExpr]), dimacsfile)
+        FeatureExprFactory.dflt.featureModelFactory.createFromDimacsFilePrefix(dimacsfile.getAbsolutePath, "")
+    }
 
-    def kconfigFile(arch: String) = "arch/" + arch + "/Kconfig"
-
-    val workingDir = new File(linuxTreeRoot)
 
     def getModel(arch: String): KConfigModel = {
 
@@ -34,10 +39,13 @@ class LinuxTest extends DifferentialTesting {
         getModel(workingDir, kconfigFile(arch), rsfFile)
     }
 
+    //    @BeforeClass
+    //    def generateLinuxX86FeatureModel
+
 
     @Test
-    @Ignore
     def testLoadLinux() {
+        //just creating dimacs files for two architectures to see whether everything is working fine
         for (arch <- List("x86", "arm")) {
             println("getting model")
             val model = getModel(arch)
@@ -92,26 +100,72 @@ class LinuxTest extends DifferentialTesting {
 
 
     @Test
+    @Ignore("unnecessary, covered now by intdep2")
+    def test_Panel_manual() {
+        //this tests some weired issues with constraints that were not respected when generating random configurations
+        def d = FeatureExprFactory.createDefinedExternal _
+
+        val fm = x86fm_dimacs
+
+        def expectSat(fexpr: FeatureExpr, isSat: Boolean = true) = {
+            assert(fexpr.isSatisfiable(fm) == isSat, fexpr + (if (isSat) " not" else "") + " satisfiable")
+            println(fexpr + (if (!isSat) " not" else "") + " satisfiable")
+        }
+        def expectContr(fexpr: FeatureExpr) = expectSat(fexpr, false)
+
+        expectContr(d("PANEL_LCD_HEIGHT=0") and d("PANEL_PROFILE=0") and d("PANEL_LCD=1") and d("PANEL"))
+        expectSat(d("PANEL_LCD_HEIGHT=40") and d("PANEL_PROFILE=0") and d("PANEL_LCD=1") and d("PANEL"))
+        expectContr(d("PANEL_LCD_HEIGHT=0") and d("PANEL_PROFILE=0") and d("PANEL_LCD=1") and d("PANEL_MODULE"))
+    }
+
+
+    @Test
     def approxfmTest() {
         //approx.fm contained several handwritten constraints that are known to hold in the linux kernel
-
-        val fm = getModel("x86").getFM
 
         for (lineOrig <- Source.fromFile("src/test/resources/approx.fm").getLines()) {
             val line = if (lineOrig contains "//") lineOrig.take(lineOrig indexOf "//") else lineOrig
             val lineExpr = new FeatureExprParser().parse(line)
             println(line)
-            assert((fm implies lineExpr).isTautology(), "approx.fm line '%s' was not guaranteed by feature model".format(lineExpr))
+            assert(lineExpr.isTautology(x86fm_dimacs), "approx.fm line '%s' was not guaranteed by feature model".format(lineExpr))
         }
 
 
     }
 
-    def createFromDimacsFile_2Var(file: URI): SATFeatureModel = createFromDimacsFile_2Var(scala.io.Source.fromFile(file))
 
-    def createFromDimacsFile_2Var(file: String): SATFeatureModel = createFromDimacsFile_2Var(scala.io.Source.fromFile(file))
+    @Test
+    @Ignore
+    def testAgainstOld {
 
-    def createFromDimacsFile_2Var(source: scala.io.Source): SATFeatureModel = {
+
+        val dimacs = "src/test/resources/2.6.33.3-2var.dimacs"
+        val fm = createFromDimacsFile_2Var(dimacs)
+        //        val workingDir = "Linux"
+        val arch = "x86"
+        val rsfFile = new File(workingDir, arch + ".rsf")
+
+        val model = getModel(workingDir, kconfigFile(arch), rsfFile)
+
+
+        for (i <- model.items.values.toList.sortBy(_.name)) {
+            for (c <- i.getConstraints)
+                if (!c.collectDistinctFeatures.exists(f => f.startsWith("CHOICE") || f.endsWith("_MODULE") || f == "MODULES"))
+                    if (!c.isTautology())
+                        if (!c.isTautology(fm)) {
+                            print("#" + i.name)
+                            println(" missing constraint: " + c)
+                        }
+            //                        else println("found: " + c)
+        }
+    }
+
+
+    //        def createFromDimacsFile_2Var(file: URI): SATFeatureModel = createFromDimacsFile_2Var_(scala.io.Source.fromFile(file))
+
+    def createFromDimacsFile_2Var(file: String): SATFeatureModel = createFromDimacsFile_2Var_(scala.io.Source.fromFile(file))
+
+    def createFromDimacsFile_2Var_(source: scala.io.Source): SATFeatureModel = {
         var variables: Map[String, Int] = Map()
         val clauses = new Vec[IVecInt]()
         var maxId = 0
@@ -143,31 +197,5 @@ class LinuxTest extends DifferentialTesting {
         assert(maxId == variables.size, "largest variable id " + maxId + " differs from number of variables " + variables.size)
         new SATFeatureModel(variables, clauses, maxId)
     }
-
-
-    @Test
-    @Ignore
-    def testAgainstOld {
-        val dimacs = "src/test/resources/2.6.33.3-2var.dimacs"
-        val fm = createFromDimacsFile_2Var(dimacs)
-        //        val workingDir = "Linux"
-        val arch = "x86"
-        val rsfFile = new File(workingDir, arch + ".rsf")
-
-        val model = getModel(workingDir, kconfigFile(arch), rsfFile)
-
-
-        for (i <- model.items.values.toList.sortBy(_.name)) {
-            for (c <- i.getConstraints)
-                if (!c.collectDistinctFeatures.exists(f => f.startsWith("CHOICE") || f.endsWith("_MODULE") || f == "MODULES"))
-                    if (!c.isTautology())
-                        if (!c.isTautology(fm)) {
-                            print("#" + i.name)
-                            println(" missing constraint: " + c)
-                        }
-            //                        else println("found: " + c)
-        }
-    }
-
 
 }

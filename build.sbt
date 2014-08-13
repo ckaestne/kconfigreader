@@ -1,6 +1,6 @@
 name := "TypeChef-kconfig"
 
-version := "0.0.2"
+version := "1.0"
 
 organization := "de.fosd.typechef"
 

@@ -292,7 +292,7 @@ trait DifferentialTesting {
             }
 
             val isValid = isValidConfig(kconfigFile, workingDir, completedConf)
-            assert(isValid == isSat)
+            assert(isValid == isSat, "expected %s, kconfig %s".format(if (isSat) "valid" else "invalid", if (isValid) "accepted assignment" else "changed assignment"))
             (printConfig(config), isSat, isValid == isSat)
         }
 

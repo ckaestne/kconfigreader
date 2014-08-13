@@ -53,6 +53,8 @@ class KConfigModel() {
             choices.values.flatMap(_.getConstraints)).toList ++
             (if (!items.contains(MODULES.feature)) List(MODULES.not) else Nil) //if no MODULES item, exclude it explicitly
 
+
+    private var cachedFM: Option[FeatureExpr] = None
     /**
      * returns the constraints as a single formula (conjunction of all constraints)
      *
@@ -62,6 +64,11 @@ class KConfigModel() {
      * but might be slow
      */
     def getFM: FeatureExpr = {
+        if (!cachedFM.isDefined) cachedFM = Some(getFM_noCache);
+        cachedFM.get
+    }
+
+    def getFM_noCache: FeatureExpr = {
         val fm = getConstraints.foldLeft(True)(_ and _)
         if (fm.isContradiction()) {
             var f: FeatureExpr = True
@@ -295,6 +302,12 @@ case class Item(val name: String, model: KConfigModel) {
     def setDepends(s: Expr) {
         this.depends = if (depends.isDefined) Some(Or(s, depends.get)) else Some(s)
     }
+    /**
+     * add a dependency as conjunction to existing dependencies (used internally only)
+     */
+    private[kconfig] def setDependsAnd(s: Expr) {
+        this.depends = if (depends.isDefined) Some(And(s, depends.get)) else Some(s)
+    }
 
     /**
      * add a selectedby clause
@@ -435,12 +448,12 @@ case class Item(val name: String, model: KConfigModel) {
         for ((v, expr) <- default.reverse) {
             v match {
                 case TristateConstant('y') if isTristate =>
-                result ::=("y", And(YTrue(), expr))
+                    result ::=("y", And(YTrue(), expr))
                     result ::=("m", And(MTrue(), expr))
                 case TristateConstant(s) =>
                     result ::=("" + s, expr)
                 case NonBooleanConstant(s) =>
-                result ::=(s, expr)
+                    result ::=(s, expr)
                 case e if isTristate /*any expression is evaluated to y/n/m*/ =>
                     result ::=("y", And(YTrue(), And(v, expr)))
                     result ::=("m", And(MTrue(), And(v, expr)))
@@ -477,12 +490,12 @@ case class Item(val name: String, model: KConfigModel) {
                 val expr = if (ctx == null) e else And(e, ctx)
                 v match {
                     case TristateConstant('y') if isTristate =>
-                    updateResult("y", expr.fexpr_y)
+                        updateResult("y", expr.fexpr_y)
                         updateResult("m", expr.fexpr_m)
                     case TristateConstant(s) =>
                         updateResult("" + s, expr.fexpr_both)
                     case NonBooleanConstant(s) =>
-                    updateResult(s, expr.fexpr_both)
+                        updateResult(s, expr.fexpr_both)
                     case e if isTristate /*any expression is evaluated to y/n/m*/ =>
                         updateResult("y", And(v, expr).fexpr_y)
                         updateResult("m", And(v, expr).fexpr_m)
@@ -508,12 +521,12 @@ case class Item(val name: String, model: KConfigModel) {
         for ((v, expr) <- default.reverse) {
             v match {
                 case TristateConstant('y') if isTristate =>
-                result += "y"
+                    result += "y"
                     result += "m"
                 case TristateConstant(s) =>
                     result += "" + s
                 case NonBooleanConstant(s) =>
-                result += s
+                    result += s
                 case e if isTristate /*any expression is evaluated to y/n/m*/ =>
                     result += "y"
                     result += "m"

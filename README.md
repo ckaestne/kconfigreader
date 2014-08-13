@@ -12,6 +12,8 @@ To extract the raw data from kconfig files, this tool
 relies on a patched version of undertaker's dumpconf tool
 available here: https://github.com/ckaestne/undertaker
 (build with `make scripts/kconfig/dumpconf`)
+A binary version compiled on ubuntu 12.04 is available
+in the `binary` folder for convenience.
 
 
 Instrunctions
@@ -99,7 +101,7 @@ within kconfig, but limited to the values mentioned in the kconfig file as defau
 in constraints. A different behavior would be possibly by changing the implementation.
 
 Range expressions currently may not depend on other configuration values, but only on constants.
-This is likely sufficient for Linux.
+There is only a single case in Linux-x86 where range expressions are ignored due to this limitation.
 
 We currently create constraints for each option separately. Select statements are listed under the
 selected statement, not the selecting statement. It would be an straightforward extension to additionally distinguish
@@ -108,6 +110,36 @@ the kind of constraints further and maintain traceability information back to th
 The MODULES option (if used in the model) must be named MODULES. It is matched by name, not
 by the additional Kconfig attribute. (could be changed by modifying both this tool and dumpconf)
 
+
+Testing
+====
+
+The semantics of Kconfig are nontrivial, not only with regard to tristate options, but also
+with regard to nonboolean functions, items and choices with and without prompts, and so forth.
+
+We invested significant effort in a testing infrastructure, to ensure that the Kconfig behavior
+is correctly captured. The idea is to use a differential testing approach. We use kconfig
+itself (more precisely the tool `conf --olddefconfig`) to check whether a specific
+configuration is valid. This tool will modify values in an invalid configuration to a valid
+one; that is, it provides a means to establish ground truth which configurations are valid.
+
+On small kconfig models we apply a brute-force strategy where we execute kconfig on all
+possible valid and invalid configurations (or a sampled subset of values for nonboolean options). We
+compare for every configuration whether our propositional abstraction yields the same
+result as kconfig.
+
+On large models as the Linux kernel model, a brute-force strategy obviously does not work.
+Instead, we can provide a partial configuration or a subset of configuration options that
+should be explored in a brute-force way. Our testing infrastructure completes the configuration
+with the abstracted model and checks whether the configuration validity agrees between our
+abstraction and the kconfig behavior.
+
+Note that this requires a releatively recent version of Kconfig's conf tool that is part of
+the Linux kernel in which the option `--olddefconfig` is available. (after 2011)
+
+For all bug reports, please provide a failing test case in terms of a small kconfig file
+where the brute-force analysis finds differences between the kconfig behavior and our
+abstraction.
 
 
 Notes
@@ -128,3 +160,15 @@ tristate to CONFIG_x translation:
   => #undef CONFIG_x
   => #undef CONFIG_x_MODULE
   ```
+
+
+Credits and Support
+====
+
+This tool was developed by Christian Kaestner at Carnegie Mellon University. Please
+contact him in terms of questions.
+
+
+It builds on the dumpconf infrastructure of the Undertaker project and reuses some test cases
+from that project. It was inspired by Undertaker and the LVAT infrastructure (which is
+unfortunately no longer maintained).

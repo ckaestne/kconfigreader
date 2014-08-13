@@ -180,24 +180,31 @@ object KConfigReader extends App {
      */
     def writeCompletedConf(model: KConfigModel, fm: FeatureModel, outputfile: File, openfile: File) = {
         val writer = new FileWriter(outputfile)
+        val owriter = new FileWriter(openfile)
 
 
 
-        for (feature <- model.getFM.collectDistinctFeatureObjects.toList.sortBy(_.feature); if !(feature.feature contains "=") && !(feature.feature contains "'")) {
+        for (feature <- model.getFM.collectDistinctFeatureObjects.toList.sortBy(_.feature); if !(feature.feature contains "=")) {
 
-            if (feature.isContradiction(fm)) {
+            if (feature.feature.head=='\'' && feature.feature.last=='\''){
+                writer.write("#undef CONFIG_%s\n".format(feature.feature.drop(1).dropRight(1)))
+                println("#undef CONFIG_" + feature.feature.drop(1).dropRight(1))
+            }
+            else if (feature.isContradiction(fm)) {
                 writer.write("#undef CONFIG_%s\n".format(feature.feature))
                 println("#undef CONFIG_" + feature.feature)
             }
             else if (feature.not.isContradiction(fm)) {
                 writer.write("#define CONFIG_%s\n".format(feature.feature))
                 println("#define CONFIG_" + feature.feature)
+            } else {
+                owriter.write(feature.feature)
             }
 
         }
 
         writer.close()
-
+        owriter.close()
     }
 
     /**

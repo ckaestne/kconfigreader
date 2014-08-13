@@ -61,12 +61,12 @@ Additional options:
     It requires to write a .dimacs file for reasonable performance.
 
 
-   * `--writeNonBoolean` writes a `out.nonbool.h` file that defines all nonboolean options to
+  * `--writeNonBoolean` writes a `out.nonbool.h` file that defines all nonboolean options to
      their defaults using #define directives. Additionally, #ifdef directives are used if
      different defaults are defined in different configurations or defaults are not available
      for all configurations.
 
-   * `--reduceConstraints` eliminates all redundant constraints (i.e., constraints that are
+  * `--reduceConstraints` eliminates all redundant constraints (i.e., constraints that are
      implied already by previous constraints) before writing the .dimacs file. This is a very expensive
      operation, that however can reduce the size of the .dimacs file by a few percent.
 

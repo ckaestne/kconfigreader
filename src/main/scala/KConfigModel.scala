@@ -421,9 +421,9 @@ case class Item(val name: String, model: KConfigModel) {
                 for (value <- knownNonBooleanValues /*without n*/ ) {
                     val v = if (isHex) Integer.parseInt(value.drop(2), 16) else value.toInt
                     if (v < lower)
-                        result ::= expr.fexpr_y implies getNonBooleanValue(value).not
+                        result ::= expr.fexpr_both implies getNonBooleanValue(value).not
                     if (v > upper)
-                        result ::= expr.fexpr_y implies getNonBooleanValue(value).not
+                        result ::= expr.fexpr_both implies getNonBooleanValue(value).not
                 }
         }
 

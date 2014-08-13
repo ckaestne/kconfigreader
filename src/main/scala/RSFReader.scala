@@ -117,7 +117,7 @@ class RSFReader {
             val choiceItem = model.getItem(choice.name)
             choiceItem.tristateChoice = choice.isTristate
             if (choiceItem.hasPrompt != Not(YTrue()))
-                choiceItem.setDepends(choiceItem.hasPrompt)
+                choiceItem.setDependsAnd(choiceItem.hasPrompt)
             choiceItem.setPrompt(if (choice.required == "optional") YTrue() else Not(YTrue()))
             choiceItem.default = List((TristateConstant('y'), choiceItem.depends.getOrElse(YTrue())))
 

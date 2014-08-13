@@ -8,44 +8,47 @@ import org.junit._
  */
 class KConfigFragmentTest extends DifferentialTesting {
 
-    @Test def testMiniK() {
+    @Test def testMini() {
         checkTestModelBruteForce("src/test/resources/mini.config")
     }
 
-    @Test def testMini2K() {
+    @Test def testMini2() {
         checkTestModelBruteForce("src/test/resources/mini2.config")
     }
 
-    @Test def testMini3K() {
+    @Test def testMini3() {
         checkTestModelBruteForce("src/test/resources/mini3.config")
     }
 
-    @Test def testDepK() {
+    @Test def testDep() {
         checkTestModelBruteForce("src/test/resources/dep.config")
+    }
+    @Test def testDep2() {
+        checkTestModelBruteForce("src/test/resources/dep2.config")
     }
 
     @Test def testSelK() {
         checkTestModelBruteForce("src/test/resources/sel.config")
     }
 
-    @Test def testSelHiddenK() {
+    @Test def testSelHidden() {
         checkTestModelBruteForce("src/test/resources/selhidden.config")
     }
 
 
-    @Test def testSelHidden2K() {
+    @Test def testSelHidden2() {
         checkTestModelBruteForce("src/test/resources/selhidden2.config")
     }
 
-    @Test def testSelHidden3K() {
+    @Test def testSelHidden3() {
         checkTestModelBruteForce("src/test/resources/selhidden3.config")
     }
 
-    @Test def testSelHidden4K() {
+    @Test def testSelHidden4() {
         checkTestModelBruteForce("src/test/resources/selhidden4.config")
     }
 
-    @Test def testSelHidden5K() {
+    @Test def testSelHidden5() {
         checkTestModelBruteForce("src/test/resources/selhidden5.config")
     }
 

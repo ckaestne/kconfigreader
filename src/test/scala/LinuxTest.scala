@@ -83,6 +83,12 @@ class LinuxTest extends DifferentialTesting {
         genAllCombinationsFromPartial(x86kconfig, workingDir, x86model,
             Set("INITRAMFS_COMPRESSION_GZIP"))
     }
+    @Test
+    def test_PANEL() {
+
+        genAllCombinationsFromPartial(x86kconfig, workingDir, x86model,
+            Set("PANEL"))
+    }
 
 
     @Test

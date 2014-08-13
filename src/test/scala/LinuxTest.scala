@@ -80,17 +80,11 @@ class LinuxTest extends DifferentialTesting {
 
     @Test
     def test32vs64() {
-
         genAllCombinationsFromPartial(x86kconfig, workingDir, x86model,
-            Set(/*"X86_32","X86_64"*/))
+            Set("X86_32", "X86_64"))
     }
 
-    @Test
-    def test_INITRAMFS_COMPRESSION_GZIP() {
 
-        genAllCombinationsFromPartial(x86kconfig, workingDir, x86model,
-            Set("INITRAMFS_COMPRESSION_GZIP"))
-    }
     @Test
     def test_regression() {
         //these previously triggered bugs, fixed now
@@ -98,15 +92,13 @@ class LinuxTest extends DifferentialTesting {
             Set("PANEL"))
         genAllCombinationsFromPartial(x86kconfig, workingDir, x86model,
             Set("RADIO_RTRACK2"))
-    }
-
-
-    @Test
-    def test_tmp() {
-
         genAllCombinationsFromPartial(x86kconfig, workingDir, x86model,
             Set("MPENTIUM4"))
+        genAllCombinationsFromPartial(x86kconfig, workingDir, x86model,
+            Set("INITRAMFS_COMPRESSION_GZIP"))
     }
+
+
 
     @Test
     @Ignore("unnecessary, covered now by intdep2 and intdep3")

@@ -500,7 +500,7 @@ case class Item(val name: String, model: KConfigModel) {
                         updateResult("y", And(v, expr).fexpr_y)
                         updateResult("m", And(v, expr).fexpr_m)
                     case Name(i) if isNonBoolean /*reference to another nonboolean item*/ =>
-                        addDefaults(i.default, expr)
+                        addDefaults(i.default.reverse, expr)
                     case e /*any expression is evaluated to y/n/m*/ =>
                         updateResult("y", And(v, expr).fexpr_both)
                 }

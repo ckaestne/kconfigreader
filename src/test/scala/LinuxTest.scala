@@ -92,15 +92,24 @@ class LinuxTest extends DifferentialTesting {
             Set("INITRAMFS_COMPRESSION_GZIP"))
     }
     @Test
-    def test_PANEL() {
-
+    def test_regression() {
+        //these previously triggered bugs, fixed now
         genAllCombinationsFromPartial(x86kconfig, workingDir, x86model,
             Set("PANEL"))
+        genAllCombinationsFromPartial(x86kconfig, workingDir, x86model,
+            Set("RADIO_RTRACK2"))
     }
 
 
     @Test
-    @Ignore("unnecessary, covered now by intdep2")
+    def test_tmp() {
+
+        genAllCombinationsFromPartial(x86kconfig, workingDir, x86model,
+            Set("MPENTIUM4"))
+    }
+
+    @Test
+    @Ignore("unnecessary, covered now by intdep2 and intdep3")
     def test_Panel_manual() {
         //this tests some weired issues with constraints that were not respected when generating random configurations
         def d = FeatureExprFactory.createDefinedExternal _
@@ -116,6 +125,19 @@ class LinuxTest extends DifferentialTesting {
         expectContr(d("PANEL_LCD_HEIGHT=0") and d("PANEL_PROFILE=0") and d("PANEL_LCD=1") and d("PANEL"))
         expectSat(d("PANEL_LCD_HEIGHT=40") and d("PANEL_PROFILE=0") and d("PANEL_LCD=1") and d("PANEL"))
         expectContr(d("PANEL_LCD_HEIGHT=0") and d("PANEL_PROFILE=0") and d("PANEL_LCD=1") and d("PANEL_MODULE"))
+
+
+
+        expectContr(d("X86_INTERNODE_CACHE_SHIFT=0"))
+        expectContr(d("X86_L1_CACHE_SHIFT=0"))
+        expectContr(d("X86_L1_CACHE_SHIFT=4") and d("MPENTIUM4"))
+        expectContr(d("X86_L1_CACHE_SHIFT=6") and d("MPENTIUM4"))
+        expectSat(d("X86_L1_CACHE_SHIFT=7") and d("MPENTIUM4"))
+        expectSat(d("X86_INTERNODE_CACHE_SHIFT=7") and d("X86_L1_CACHE_SHIFT=7"))
+        expectContr(d("X86_INTERNODE_CACHE_SHIFT=4") and d("X86_L1_CACHE_SHIFT=5"))
+        expectSat(d("X86_INTERNODE_CACHE_SHIFT=7") and d("X86_L1_CACHE_SHIFT=6"))
+        expectContr(d("X86_INTERNODE_CACHE_SHIFT=7") and d("X86_L1_CACHE_SHIFT=6") and d("MPENTIUM4") andNot d("NUMA") andNot d("X86_VSMP"))
+        expectSat(d("X86_INTERNODE_CACHE_SHIFT=7") and d("X86_L1_CACHE_SHIFT=6") and d("MK7") and d("NUMA"))
     }
 
 

@@ -238,9 +238,9 @@ trait DifferentialTesting {
         val EnabledConfig = "^CONFIG_([a-zA-Z0-9_]+)=y$".r
         val ModuleConfig = "^CONFIG_([a-zA-Z0-9_]+)=m$".r
         val NonBoolean = "^CONFIG_([a-zA-Z0-9_]+)=(-?\\d+)$".r
-        val NonBooleanHex = "^CONFIG_([a-zA-Z0-9_]+)=(0x[A-Fa-f0-9]+)$".r
+        val NonBooleanHex = "^CONFIG_([a-zA-Z0-9_]+)=(0?x?[A-Fa-f0-9]+)$".r
         val NonBooleanStr = "^CONFIG_([a-zA-Z0-9_]+)=(\".*\")$".r
-        for (l <- io.Source.fromFile(configFile).getLines() if !(l.startsWith("#"))) {
+        for (l <- io.Source.fromFile(configFile).getLines() if !(l.startsWith("#")) if (!l.trim.isEmpty)) {
             l match {
                 case EnabledConfig(c) => foundConfig += (c -> "y")
                 case ModuleConfig(c) => foundConfig += (c -> "m")

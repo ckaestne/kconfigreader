@@ -6,3 +6,5 @@ target/
 .config
 .config.old
 gl/
+*.formula
+run.sh

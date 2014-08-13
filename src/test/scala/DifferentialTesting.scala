@@ -164,7 +164,8 @@ trait DifferentialTesting {
 
             val item = fm.getItem(feature)
 
-            if (item.isTristate) {
+            if (item.isChoice) {}
+            else if (item.isTristate) {
                 if (value == "y") expr = expr and item.fexpr_y andNot item.fexpr_m
                 else if (value == "m") expr = expr andNot item.fexpr_y and item.fexpr_m
                 else expr = expr andNot item.fexpr_y andNot item.fexpr_m
@@ -195,7 +196,7 @@ trait DifferentialTesting {
     //        cleanAssignment(l.toList, model).toSet
 
 
-    private def explodeConfigs(features: Iterable[Item]): List[Map[String, String]] =
+    protected def explodeConfigs(features: Iterable[Item]): List[Map[String, String]] =
         if (features.isEmpty) List(Map())
         else {
             val r = explodeConfigs(features.tail)
@@ -215,7 +216,7 @@ trait DifferentialTesting {
         }
 
 
-    private def isValidConfig(kconfigFile: String, workingDir: File, config: Map[String, String]): Boolean = {
+    protected def isValidConfig(kconfigFile: String, workingDir: File, config: Map[String, String]): Boolean = {
         println("=============")
         println("checking config: " + printConfig(config))
 

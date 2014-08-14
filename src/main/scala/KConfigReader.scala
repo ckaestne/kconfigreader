@@ -3,9 +3,13 @@ package de.fosd.typechef.kconfig
 import java.io.{FileWriter, File}
 import scala.sys.process.Process
 import de.fosd.typechef.busybox.DimacsWriter
-import de.fosd.typechef.featureexpr.sat.SATFeatureExpr
+import de.fosd.typechef.featureexpr.sat.{SATFeatureModel, SATFeatureExpr}
 import de.fosd.typechef.featureexpr.{FeatureModel, FeatureExprFactory, FeatureExpr}
 import de.fosd.typechef.featureexpr.FeatureExprFactory._
+import org.sat4j.LightFactory
+import org.sat4j.core.{Vec, VecInt}
+import Math.max
+import org.sat4j.specs.{IVecInt, IVec}
 
 
 /**
@@ -61,6 +65,7 @@ object KConfigReader extends App {
     val nonboolFile = new File(out + ".nonbool.h")
     val completedConfFile = new File(out + ".completed.h")
     val openFeatureListFile = new File(out + ".open")
+    val updatedDimacsFile = new File(out + ".dimacs.2")
 
     assert(kconfigFile.exists(), "kconfig file does not exist")
 
@@ -103,8 +108,8 @@ object KConfigReader extends App {
 
     if (options contains "writeCompletedConf") {
         println("writing completed.conf")
-        val fm = FeatureExprFactory.dflt.featureModelFactory.createFromDimacsFile(scala.io.Source.fromFile(dimacsFile), x=>x)
-        writeCompletedConf(model, fm, completedConfFile, openFeatureListFile)
+        val fm = FeatureExprFactory.sat.featureModelFactory.createFromDimacsFile(scala.io.Source.fromFile(dimacsFile), x => x)
+        writeCompletedConf(model, fm, completedConfFile, openFeatureListFile, updatedDimacsFile)
     }
 
     println("done.")
@@ -156,13 +161,19 @@ object KConfigReader extends App {
     def writeNonBoolean(model: KConfigModel, file: File) = {
         val writer = new FileWriter(file)
 
-        for (item <- model.items.values; if item.isNonBoolean) {
+        for (item <- model.items.values.toList.sortBy(_.name); if item.isNonBoolean) {
             val defaults = item.getDefaults().filter(_._2.isSatisfiable())
-            val v = if (item._type==StringType) "\"%s\"" else "%s"
-            if (defaults.size == 1)
-                writer.write(("#define CONFIG_%s "+v+"\n").format(item.name, defaults.keys.head))
-            else for ((default, fexpr) <- defaults)
-                writer.write(("#if %s\n  #define CONFIG_%s "+v+"\n#endif\n").format(formatExpr(fexpr), item.name, default))
+            val v = if (item._type == StringType) "\"%s\"" else "%s"
+            if (defaults.size == 0)
+                writer.write(("//WARNING: no defaults for CONFIG_%s\n" +
+                    "#define CONFIG_%s %s\n").format(item.name, item.name, if (item._type == StringType) "\"\"" else "0"))
+            else if (defaults.size == 1)
+                writer.write(("#define CONFIG_%s " + v + "\n").format(item.name, defaults.keys.head))
+            else {
+                writer.write(("#undef CONFIG_%s\n").format(item.name))
+                for ((default, fexpr) <- defaults)
+                    writer.write(("#if %s\n  #define CONFIG_%s " + v + "\n#endif\n").format(formatExpr(fexpr), item.name, default))
+            }
 
             writer.write("\n")
 
@@ -173,38 +184,104 @@ object KConfigReader extends App {
         writer.close()
     }
 
+
     /**
      * define all mandatory features in a .h file and undefine all contraditions
      *
      * quite expensive operation that requires a SAT call for every feature
      */
-    def writeCompletedConf(model: KConfigModel, fm: FeatureModel, outputfile: File, openfile: File) = {
+    def writeCompletedConf(model: KConfigModel, fm_ : FeatureModel, outputfile: File, openfile: File, newDimacsFile: File) = {
+
+        //trick using the SatSolver's backbone should speed up things considerably
+        //see https://github.com/tthuem/FeatureIDE/blob/master/plugins/de.ovgu.featureide.fm.core/src/org/prop4j/SatSolver.java
+
+        val fm = fm_.asInstanceOf[SATFeatureModel]
+        val solver = LightFactory.instance().defaultSolver()
+        solver.newVar(fm.lastVarId)
+        solver.addAllClauses(fm.clauses)
+        //        val backbone = RemiUtils.backbone(solver)
+
+        val backbone = new VecInt
+        val nvars = solver.nVars()
+        var stepWidth = max(1, nvars / 100)
+        println("computing completed config with " + (nvars * 2) + " SAT calls")
+        for (i <- 1 to nvars) {
+            if ((i % stepWidth) == 0)
+                println("computing completed config -- " + (i / stepWidth) + "%")
+            backbone.push(i)
+            if (solver.isSatisfiable(backbone)) {
+                backbone.pop().push(-i)
+                if (solver.isSatisfiable(backbone)) {
+                    backbone.pop()
+                } else {
+                    backbone.pop().push(i)
+                }
+            } else {
+                backbone.pop().push(-i)
+            }
+        }
+
+
         val writer = new FileWriter(outputfile)
         val owriter = new FileWriter(openfile)
 
 
-
         for (feature <- model.getFM.collectDistinctFeatureObjects.toList.sortBy(_.feature); if !(feature.feature contains "=")) {
 
-            if (feature.feature.head=='\'' && feature.feature.last=='\''){
-                writer.write("#undef CONFIG_%s\n".format(feature.feature.drop(1).dropRight(1)))
-                println("#undef CONFIG_" + feature.feature.drop(1).dropRight(1))
+            val id = fm.variables(feature.feature)
+            val name = "CONFIG_" + (if (feature.feature.head == '\'' && feature.feature.last == '\'') feature.feature.drop(1).dropRight(1) else feature.feature)
+
+            if (backbone.contains(-1 * id)) {
+                writer.write("#undef %s\n".format(name))
+                //                println("#undef " + name)
             }
-            else if (feature.isContradiction(fm)) {
-                writer.write("#undef CONFIG_%s\n".format(feature.feature))
-                println("#undef CONFIG_" + feature.feature)
-            }
-            else if (feature.not.isContradiction(fm)) {
-                writer.write("#define CONFIG_%s\n".format(feature.feature))
-                println("#define CONFIG_" + feature.feature)
+            else if (backbone.contains(id)) {
+                writer.write("#define %s\n".format(name))
+                //                println("#define " + name)
             } else {
-                owriter.write(feature.feature)
+                owriter.write(name + "\n")
             }
 
         }
 
         writer.close()
         owriter.close()
+
+
+        //simplify .dimacs file with new knowledge
+        val oldClauses = fm.clauses
+        val newClauses: IVec[IVecInt] = new Vec[IVecInt]()
+
+        val backboneIt = backbone.iterator()
+        while (backboneIt.hasNext) {
+            val knownValue = backboneIt.next
+            newClauses.push({
+                val c = new VecInt(1)
+                c.push(knownValue)
+                c
+            })
+        }
+
+        val oldClauseIt = oldClauses.iterator()
+        while (oldClauseIt.hasNext) {
+            val oldClause = oldClauseIt.next
+            val newClause = new VecInt(oldClause.size())
+            oldClause.copyTo(newClause)
+            val backboneIt = backbone.iterator()
+            while (backboneIt.hasNext) {
+                val knownValue = backboneIt.next
+                if (newClause contains knownValue)
+                    newClause.clear()
+                if (newClause contains (-1 * knownValue))
+                    newClause.remove(-1 * knownValue)
+            }
+
+            if (!newClause.isEmpty)
+                newClauses.push(newClause)
+        }
+
+        new DimacsWriter().writeAsDimacsRaw(newDimacsFile, fm.variables, newClauses)
+
     }
 
     /**

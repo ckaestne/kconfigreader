@@ -1,5 +1,7 @@
+package de.fosd.typechef.kconfig
+
+
 import de.fosd.typechef.featureexpr.{FeatureExprFactory, FeatureExpr}
-import de.fosd.typechef.kconfig.DifferentialTesting
 import java.io.{FileWriter, File}
 import FeatureExprFactory.False
 

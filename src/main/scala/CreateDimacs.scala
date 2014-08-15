@@ -1,4 +1,4 @@
-package de.fosd.typechef.busybox
+package de.fosd.typechef.kconfig
 
 import de.fosd.typechef.featureexpr.SingleFeatureExpr
 import de.fosd.typechef.featureexpr.sat._

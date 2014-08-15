@@ -2,7 +2,6 @@ package de.fosd.typechef.kconfig
 
 import java.io.{FileWriter, File}
 import scala.sys.process.Process
-import de.fosd.typechef.busybox.DimacsWriter
 import de.fosd.typechef.featureexpr.sat.{SATFeatureModel, SATFeatureExpr}
 import de.fosd.typechef.featureexpr.{FeatureModel, FeatureExprFactory, FeatureExpr}
 import de.fosd.typechef.featureexpr.FeatureExprFactory._

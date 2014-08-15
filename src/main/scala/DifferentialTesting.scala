@@ -1,5 +1,6 @@
 package de.fosd.typechef.kconfig
 
+
 import java.io._
 import de.fosd.typechef.featureexpr.{SingleFeatureExpr, FeatureExprFactory, FeatureExpr}
 import FeatureExprFactory._
@@ -330,7 +331,7 @@ trait DifferentialTesting {
     }
 
 
-    private def satAssignmentToConfig(r: Option[(List[SingleFeatureExpr], List[SingleFeatureExpr])], fm: KConfigModel): Map[String, String] = {
+    protected def satAssignmentToConfig(r: Option[(List[SingleFeatureExpr], List[SingleFeatureExpr])], fm: KConfigModel): Map[String, String] = {
         assert(r.isDefined)
 
         val (enabled, disabled) = r.get

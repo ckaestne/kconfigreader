@@ -232,6 +232,10 @@ class KConfigFragmentTest extends DifferentialTesting {
         checkTestModelBruteForce("src/test/resources/choicenamed.config")
     }
 
+    @Test def testNoChoice() {
+        checkTestModelBruteForce("src/test/resources/nochoice.config")
+    }
+
 
     //    TODO check IO_DELAY_0X80 and DEFAULT_IO_DELAY_TYPE relationship in arch/x86/Kconfig.debug
 

@@ -6,7 +6,6 @@ import de.fosd.typechef.featureexpr.{FeatureModel, FeatureExpr, FeatureExprFacto
 import scala._
 import org.sat4j.core.{VecInt, Vec}
 import org.sat4j.specs.IVecInt
-import de.fosd.typechef.busybox.DimacsWriter
 import de.fosd.typechef.featureexpr.sat.{SATFeatureModel, SATFeatureExpr}
 import scala.io.Source
 
@@ -77,6 +76,13 @@ class LinuxTest extends DifferentialTesting {
 
 
         }
+    }
+
+    @Test
+    def testMin() {
+        //test a random valid configuration
+        genAllCombinationsFromPartial(x86kconfig, workingDir, x86model,
+            Set("USB_GADGET_LANGWELL"))
     }
 
 

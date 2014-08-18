@@ -580,6 +580,7 @@ case class Choice(val name: String) {
     var required: String = ""
     var _type: ItemType = BoolType
     var items: List[Item] = Nil
+
     lazy val fexpr_y = FeatureExprFactory.createDefinedExternal(name)
     lazy val fexpr_m = if (isTristate) FeatureExprFactory.createDefinedExternal(name + "_MODULE") else False
     lazy val fexpr_both = fexpr_m or fexpr_y
@@ -605,23 +606,26 @@ case class Choice(val name: String) {
         this
     }
 
+    //return those items that have a prompt at least sometimes
+    def promptItems: List[Item] = items.filter(_.hasPrompt != Not(YTrue()))
+
     def getConstraints: List[FeatureExpr] = {
         var result: List[FeatureExpr] = List()
         //whether choices are mandatory or depend on others are set by the Items abstraction, not here
         //choice -> at least one child
-        result ::= (this.fexpr_both implies (items.foldLeft(False)(_ or _.fexpr_both)))
-        //every option implies the choice
+        result ::= (this.fexpr_both implies (promptItems.foldLeft(False)(_ or _.fexpr_both)))
+        //every option (even those without prompts) implies the choice
         result ++= items.map(_.fexpr_both implies this.fexpr_both)
         //children can only select "m" if entire choice is "m"
         if (isTristate)
             result ++= items.filter(_.isTristate).map(_.fexpr_m implies this.fexpr_m)
-        //all options are mutually exclusive in "y" setting (not in "m")
+        //all options (with prompts) are mutually exclusive in "y" setting (not in "m")
         result ++=
-            (for (a <- items.tails.take(items.size); b <- a.tail) yield (a.head.fexpr_y mex b.fexpr_y))
-        //if one entry is selected as "y" no other entry may be selected as "m"
+            (for (a <- promptItems.tails.take(promptItems.size); b <- a.tail) yield (a.head.fexpr_y mex b.fexpr_y))
+        //if one entry is selected as "y" no other entry may be selected as "m" (prompt only)
         if (isTristate)
-            result ++= (for (a <- items) yield
-                a.fexpr_y implies items.foldLeft(True)((f, i) => f and i.fexpr_m.not()))
+            result ++= (for (a <- promptItems) yield
+                a.fexpr_y implies promptItems.foldLeft(True)((f, i) => f and i.fexpr_m.not()))
 
         if (isTristate) {
             result ::= (fexpr_m mex fexpr_y)

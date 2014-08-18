@@ -69,9 +69,10 @@ class KConfigModel() {
     }
 
     def getFM_noCache: FeatureExpr = {
-        val fm = getConstraints.foldLeft(True)(_ and _)
+        val init: FeatureExpr = True
+        val fm = getConstraints.foldLeft(init)(_ and _)
         if (fm.isContradiction()) {
-            var f: FeatureExpr = True
+            var f: FeatureExpr = init
             var d: String = ""
             for (c <- getConstraints) {
                 if (!(f and c).isSatisfiable()) throw new KConfigModelException("model is unsatisfiable, because " + c + ", before \n" + d)

@@ -236,22 +236,7 @@ trait DifferentialTesting {
 
         println(Process(configTool.format(kconfigFile), workingDir, ("ARCH", "x86"), ("KERNELVERSION", "3.11")).!!)
 
-        var foundConfig: Map[String, String] = Map()
-        val EnabledConfig = "^CONFIG_([a-zA-Z0-9_]+)=y$".r
-        val ModuleConfig = "^CONFIG_([a-zA-Z0-9_]+)=m$".r
-        val NonBoolean = "^CONFIG_([a-zA-Z0-9_]+)=(-?\\d+)$".r
-        val NonBooleanHex = "^CONFIG_([a-zA-Z0-9_]+)=(0?x?[A-Fa-f0-9]+)$".r
-        val NonBooleanStr = "^CONFIG_([a-zA-Z0-9_]+)=(\".*\")$".r
-        for (l <- io.Source.fromFile(configFile).getLines() if !(l.startsWith("#")) if (!l.trim.isEmpty)) {
-            l match {
-                case EnabledConfig(c) => foundConfig += (c -> "y")
-                case ModuleConfig(c) => foundConfig += (c -> "m")
-                case NonBoolean(c, v) => foundConfig += (c -> v)
-                case NonBooleanHex(c, v) => foundConfig += (c -> v)
-                case NonBooleanStr(c, v) => foundConfig += (c -> v)
-                case _ => println("unmatched .config line " + l)
-            }
-        }
+        val foundConfig: Map[String, String] = readConfigFile(configFile)
 
         println("found config: " + printConfig(foundConfig))
 
@@ -274,11 +259,31 @@ trait DifferentialTesting {
     }
 
 
+    def readConfigFile(configFile: File): Map[String, String] = {
+        var foundConfig: Map[String, String] = Map()
+        val EnabledConfig = "^CONFIG_([a-zA-Z0-9_]+)=y$".r
+        val ModuleConfig = "^CONFIG_([a-zA-Z0-9_]+)=m$".r
+        val NonBoolean = "^CONFIG_([a-zA-Z0-9_]+)=(-?\\d+)$".r
+        val NonBooleanHex = "^CONFIG_([a-zA-Z0-9_]+)=(0?x?[A-Fa-f0-9]+)$".r
+        val NonBooleanStr = "^CONFIG_([a-zA-Z0-9_]+)=(\".*\")$".r
+        for (l <- io.Source.fromFile(configFile).getLines() if !(l.startsWith("#")) if (!l.trim.isEmpty)) {
+            l match {
+                case EnabledConfig(c) => foundConfig += (c -> "y")
+                case ModuleConfig(c) => foundConfig += (c -> "m")
+                case NonBoolean(c, v) => foundConfig += (c -> v)
+                case NonBooleanHex(c, v) => foundConfig += (c -> v)
+                case NonBooleanStr(c, v) => foundConfig += (c -> v)
+                case _ => println("unmatched .config line " + l)
+            }
+        }
+        foundConfig
+    }
+
     /** ************
       * partial
       */
 
-    def genAllCombinationsFromPartial(kconfigFile: String, workingDir: File, fm: KConfigModel, featureSet: Set[String]) {
+    def genAllCombinationsFromPartial(kconfigFile: String, workingDir: File, fm: KConfigModel, featureSet: Set[String], minimizeConfigurations: Boolean = true) {
         def cleanAssignment(l: Set[String], model: KConfigModel): Set[String] =
             l.filterNot(fm.getItem(_).isChoice).filter(s => s.endsWith("_MODULE") || model.getItem(s).isDefined)
 
@@ -288,9 +293,9 @@ trait DifferentialTesting {
             val partialAssignment = getPartialAssignment(fm, config)
             val isSat = (fm.getFM and partialAssignment).isSatisfiable
             val completedConf = if (isSat) {
-                genValidAssignment(kconfigFile, workingDir, fm, partialAssignment)
+                genValidAssignment(kconfigFile, workingDir, fm, partialAssignment, minimizeConfigurations)
             } else {
-                genInvalidAssignment(kconfigFile, workingDir, fm, partialAssignment)
+                genInvalidAssignment(kconfigFile, workingDir, fm, partialAssignment, minimizeConfigurations)
             }
 
             val isValid = isValidConfig(kconfigFile, workingDir, completedConf)
@@ -303,16 +308,16 @@ trait DifferentialTesting {
     }
 
 
-    def genValidAssignment(kconfigFile: String, workingDir: File, fm: KConfigModel, partialAssignment: FeatureExpr): Map[String, String] = {
-        val r = (fm.getFM and partialAssignment).getSatisfiableAssignment(null, fm.getAllSymbols, true)
+    def genValidAssignment(kconfigFile: String, workingDir: File, fm: KConfigModel, partialAssignment: FeatureExpr, minimizeConfigurations: Boolean = true): Map[String, String] = {
+        val r = (fm.getFM and partialAssignment).getSatisfiableAssignment(null, fm.getAllSymbols, minimizeConfigurations)
         satAssignmentToConfig(r, fm)
     }
 
-    def genInvalidAssignment(kconfigFile: String, workingDir: File, fm: KConfigModel, partialAssignment: FeatureExpr): Map[String, String] = {
+    def genInvalidAssignment(kconfigFile: String, workingDir: File, fm: KConfigModel, partialAssignment: FeatureExpr, minimizeConfigurations: Boolean = true): Map[String, String] = {
         //get any assignment for the rest and overwrite the given variables
         //this will not always find out whether the assignment is actually permissable
         // (it may be permissable with another base assignment for the other options), but we can try
-        var r = fm.getFM.getSatisfiableAssignment(null, fm.getAllSymbols, true)
+        var r = fm.getFM.getSatisfiableAssignment(null, fm.getAllSymbols, minimizeConfigurations)
         assert(r.isDefined)
         var selected = r.get._1.toSet
         var deselected = r.get._2.toSet

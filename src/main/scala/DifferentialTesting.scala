@@ -27,11 +27,11 @@ trait DifferentialTesting {
     //may be overwritten by specific mixins for specific execution environments
     //the tool paths are relative to the working directory, but $PWD can be used to
     //substitute the absolute path of this project's root
-    def dumpconfTool = (sys.env.getOrElse("DUMPCONF", "$PWD/binary/dumpconf") + " %s > %s").replace("$PWD",new File(".").getAbsolutePath)
+    def dumpconfTool = (sys.env.getOrElse("DUMPCONF", "$PWD/binary/dumpconf") + " %s > %s").replace("$PWD", new File(".").getAbsolutePath)
 
     def linuxTreeRoot = sys.env.getOrElse("LINUXROOT", "src/test/resources/linux/")
 
-    def configTool = sys.env.getOrElse("CONFTOOL", "$PWD/binary/conf").replace("$PWD",new File(".").getAbsolutePath)
+    def configTool = sys.env.getOrElse("CONFTOOL", "$PWD/binary/conf").replace("$PWD", new File(".").getAbsolutePath)
     def configToolOldConfig = configTool + " --olddefconfig %s"
 
 
@@ -237,7 +237,7 @@ trait DifferentialTesting {
 
         writer.close()
 
-        println(Process(configToolOldConfig.format(kconfigFile), workingDir, ("ARCH", "x86"), ("KERNELVERSION", "3.11")).!!)
+        assert(Process(configToolOldConfig.format(kconfigFile), workingDir, ("ARCH", "x86"), ("KERNELVERSION", "3.11")).! == 0, "error executing " + configToolOldConfig.format(kconfigFile))
 
         val foundConfig: Map[String, String] = readConfigFile(configFile)
 

@@ -42,7 +42,7 @@ class RSFReader {
                     str = str.replaceFirst("^CHOICE_\\d+", "y")
                     //dumpconf prints <choice> in some cases when it refers to the outer choice item
                     //this should actually be preserved because it makes a difference in tristate choices
-                    str = str.replace("<choice>='y'", parentChoice.get.name + "=y")
+                    str = str.replace("<choice>=y", parentChoice.get.name + "=y")
                 }
                 //CHOICE_0 is irrelevant noise
                 if (str.endsWith(" && CHOICE_0"))

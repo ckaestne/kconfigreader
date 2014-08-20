@@ -25,11 +25,11 @@ import scala.sys.process.Process
 trait DifferentialTesting {
 
     //may be overwritten by specific mixins for specific execution environments
-    def dumpconfTool = sys.env.getOrElse("DUMPCONF", "/home/energy/undertaker/scripts/kconfig/dumpconf") + " %s > %s"
+    def dumpconfTool = sys.env.getOrElse("DUMPCONF", "../../../../binary/dumpconf") + " %s > %s"
 
-    def linuxTreeRoot = sys.env.getOrElse("LINUXROOT", "/home/energy/linux/")
+    def linuxTreeRoot = sys.env.getOrElse("LINUXROOT", "src/test/resources/linux/")
 
-    def configTool = sys.env.getOrElse("CONFTOOL", "/home/energy/kernel/linux-3.11/scripts/kconfig/conf") + " --olddefconfig %s"
+    def configTool = sys.env.getOrElse("CONFTOOL", "../../../../binary/conf") + " --olddefconfig %s"
 
 
     /**

@@ -31,7 +31,8 @@ trait DifferentialTesting {
 
     def linuxTreeRoot = sys.env.getOrElse("LINUXROOT", "src/test/resources/linux/")
 
-    def configTool = (sys.env.getOrElse("CONFTOOL", "$PWD/binary/conf") + " --olddefconfig %s").replace("$PWD",new File(".").getAbsolutePath)
+    def configTool = sys.env.getOrElse("CONFTOOL", "$PWD/binary/conf").replace("$PWD",new File(".").getAbsolutePath)
+    def configToolOldConfig = configTool + " --olddefconfig %s"
 
 
     /**
@@ -236,7 +237,7 @@ trait DifferentialTesting {
 
         writer.close()
 
-        println(Process(configTool.format(kconfigFile), workingDir, ("ARCH", "x86"), ("KERNELVERSION", "3.11")).!!)
+        println(Process(configToolOldConfig.format(kconfigFile), workingDir, ("ARCH", "x86"), ("KERNELVERSION", "3.11")).!!)
 
         val foundConfig: Map[String, String] = readConfigFile(configFile)
 

@@ -21,7 +21,7 @@ class LinuxDefaultConfigsTest extends LinuxTest {
         val workingDir = new File(linuxTreeRoot)
 
         //generate allnoconfig
-        println(Process("make " + configCommand, workingDir, ("ARCH", "x86"), ("KERNELVERSION", "3.11")).!!)
+        println(Process(configTool +" "+ configCommand, workingDir, ("ARCH", "x86"), ("KERNELVERSION", "3.11")).!!)
 
 
         val allnoconfig = readConfigFile(new File(workingDir, ".config"))
@@ -54,24 +54,24 @@ class LinuxDefaultConfigsTest extends LinuxTest {
 
     @Test
     def allnoconfigPossible {
-        checkDefaultConfig("allnoconfig")
+        checkDefaultConfig("--allnoconfig")
     }
     @Test
     def allyesconfigPossible {
-        checkDefaultConfig("allyesconfig")
+        checkDefaultConfig("--allyesconfig")
     }
     @Test
     def allmodconfigPossible {
-        checkDefaultConfig("allmodconfig")
+        checkDefaultConfig("--allmodconfig")
     }
     @Test
     @Ignore("this file is manually maintained and has defaults that are not within the kconfig files")
     def defconfigPossible {
-        checkDefaultConfig("defconfig")
+        checkDefaultConfig("--alldefconfig")
     }
     @Test
     def randconfigPossible {
-        checkDefaultConfig("randconfig")
+        checkDefaultConfig("--randconfig")
     }
 
 

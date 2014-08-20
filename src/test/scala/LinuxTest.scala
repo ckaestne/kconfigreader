@@ -9,14 +9,7 @@ import org.sat4j.specs.IVecInt
 import de.fosd.typechef.featureexpr.sat.{SATFeatureModel, SATFeatureExpr}
 import scala.io.Source
 
-/**
- * some test cases that run against the linux feature model
- *
- * since this requires a larger setup and quite some time, these
- * tests are deactived by default
- */
-@Ignore
-class LinuxTest extends DifferentialTesting {
+trait LinuxTestInfrastructure extends DifferentialTesting {
 
     def kconfigFile(arch: String) = "arch/" + arch + "/Kconfig"
     val workingDir = new File(linuxTreeRoot)
@@ -39,6 +32,17 @@ class LinuxTest extends DifferentialTesting {
 
         getModel(workingDir, kconfigFile(arch), rsfFile)
     }
+}
+
+/**
+ * some test cases that run against the linux feature model
+ *
+ * since this requires a larger setup and quite some time, these
+ * tests are deactived by default
+ */
+@Ignore
+class LinuxTest extends LinuxTestInfrastructure {
+
 
     //    @BeforeClass
     //    def generateLinuxX86FeatureModel

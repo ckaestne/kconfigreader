@@ -6,6 +6,8 @@ organization := "de.fosd.typechef"
 
 scalaVersion := "2.10.4"
 
+parallelExecution := false
+
 //libraryDependencies += "de.fosd.typechef" % "frontend_2.10" % "0.3.6"
 
 libraryDependencies += "org.ow2.sat4j" % "org.ow2.sat4j.core" % "2.3.5"

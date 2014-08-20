@@ -25,11 +25,13 @@ import scala.sys.process.Process
 trait DifferentialTesting {
 
     //may be overwritten by specific mixins for specific execution environments
-    def dumpconfTool = sys.env.getOrElse("DUMPCONF", "binary/dumpconf") + " %s > %s"
+    //the tool paths are relative to the working directory, but $PWD can be used to
+    //substitute the absolute path of this project's root
+    def dumpconfTool = (sys.env.getOrElse("DUMPCONF", "$PWD/binary/dumpconf") + " %s > %s").replace("$PWD",new File(".").getAbsolutePath)
 
     def linuxTreeRoot = sys.env.getOrElse("LINUXROOT", "src/test/resources/linux/")
 
-    def configTool = sys.env.getOrElse("CONFTOOL", "binary/conf") + " --olddefconfig %s"
+    def configTool = (sys.env.getOrElse("CONFTOOL", "$PWD/binary/conf") + " --olddefconfig %s").replace("$PWD",new File(".").getAbsolutePath)
 
 
     /**

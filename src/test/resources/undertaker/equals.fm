@@ -1,7 +1,7 @@
 
 config MODULES
 	bool "Enable loadable module support"
-
+  option modules
 
 config TRISTATE
 	tristate "Tristate Option"

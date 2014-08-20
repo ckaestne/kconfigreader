@@ -1,6 +1,7 @@
 config MODULES
 	default y
         bool
+          option modules
 
 config A
 	bool "A"

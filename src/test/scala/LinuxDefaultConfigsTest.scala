@@ -21,7 +21,8 @@ class LinuxDefaultConfigsTest extends LinuxTestInfrastructure {
         val workingDir = new File(linuxTreeRoot)
 
         //generate allnoconfig
-        assert(Process(configTool + " " + configCommand, workingDir, ("ARCH", "x86"), ("KERNELVERSION", "3.11")).! == 0, "failed executing " + configTool + " " + configCommand)
+        val cmd = configTool + " " + configCommand + " " + kconfigFile("x86")
+        assert(Process(cmd, workingDir, ("ARCH", "x86"), ("KERNELVERSION", "3.11")).! == 0, "failed executing " + configTool + " " + cmd)
 
 
         val allnoconfig = readConfigFile(new File(workingDir, ".config"))

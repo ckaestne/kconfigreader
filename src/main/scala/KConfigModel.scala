@@ -340,14 +340,38 @@ case class Item(val name: String, model: KConfigModel) {
         var result: List[FeatureExpr] = Nil
 
 
+        /*
+          selected by and dependencies are relatively straightforward.
+          the main surprising issue is that select overrules dependencies (that is
+          one may select something through a select, even though a dependency would
+          otherwise prevent this. (this may give a warning in some kconfig tools,
+          but is generally accepted and an exploited behavior)
+         */
+
+        //selected by any select-dependencies
+        // => (dep1 | dep2 | ... | depn) -> this
+        val selectedBy_y = selectedBy.map(sel => sel._1.fexpr_y and sel._2.fexpr_y).foldLeft(False)(_ or _)
+        val selectedBy_both = selectedBy.map(sel => sel._1.fexpr_both and sel._2.fexpr_both).foldLeft(False)(_ or _)
+        if (!selectedBy.isEmpty) {
+            result ::= (selectedBy_y implies this.fexpr_y)
+            result ::= (selectedBy_both implies this.fexpr_both)
+        }
+
+
         //dependencies
+        // => this -> (dependency | selectedby)
         if (depends.isDefined) {
             if (isTristate) {
-                result ::= this.fexpr_y implies depends.get.fexpr_y
-                result ::= this.fexpr_m implies depends.get.fexpr_both
+                result ::= this.fexpr_y implies (depends.get.fexpr_y or selectedBy_y)
+                result ::= this.fexpr_m implies (depends.get.fexpr_both or selectedBy_both)
             } else
-                result ::= (if (isNonBoolean) this.fexpr_nonboolean else this.fexpr_y) implies depends.get.fexpr_both
+                result ::= (if (isNonBoolean) this.fexpr_nonboolean else this.fexpr_y) implies (depends.get.fexpr_both or selectedBy_both)
         }
+
+        /*
+          invisible options are difficult to encode. they have defaults and those defaults only
+          change by other options
+         */
 
         //invisible options
         var promptCondition = hasPrompt
@@ -403,12 +427,6 @@ case class Item(val name: String, model: KConfigModel) {
         }
 
 
-        //selected by any select-dependencies
-        // -> (dep1 | dep2 | ... | depn) -> this
-        for (sel <- selectedBy) {
-            result ::= ((sel._1.fexpr_y and sel._2.fexpr_y) implies this.fexpr_y)
-            result ::= ((sel._1.fexpr_both and sel._2.fexpr_both) implies this.fexpr_both)
-        }
 
         //in nonboolean options, we create one feature per known value
         //all these are disjunct and one needs to be selected

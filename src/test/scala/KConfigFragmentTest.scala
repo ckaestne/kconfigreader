@@ -66,7 +66,8 @@ class KConfigFragmentTest extends DifferentialTesting {
         checkTestModelBruteForce("src/test/resources/int.config")
     }
 
-    @Test @Ignore("issue in `conf --olddefconfig` that doesn't mark invalid configurations correctly") def testInt2() {
+    @Test
+    @Ignore("issue in `conf --olddefconfig` that doesn't mark invalid configurations correctly") def testInt2() {
         checkTestModelBruteForce("src/test/resources/int_fail.config")
     }
 
@@ -225,7 +226,8 @@ class KConfigFragmentTest extends DifferentialTesting {
         checkTestModelBruteForce("src/test/resources/undefselect.config")
     }
 
-    @Ignore("this is imperative kconfig behavior not occuring in practice")@Test def testTriBool2() {
+    @Ignore("this is imperative kconfig behavior not occuring in practice")
+    @Test def testTriBool2() {
         checkTestModelBruteForce("src/test/resources/tribool2.config")
     }
     @Test def testChoiceNamed() {
@@ -240,6 +242,12 @@ class KConfigFragmentTest extends DifferentialTesting {
     }
     @Test def testChoiceDefault() {
         checkTestModelBruteForce("src/test/resources/choicedefault.config")
+    }
+    @Test def testSelectOverDepends() {
+        checkTestModelBruteForce("src/test/resources/selectoverdepends.config")
+    }
+    @Test def testSelectOverDepends2() {
+        checkTestModelBruteForce("src/test/resources/selectoverdepends2.config")
     }
 
 

@@ -249,6 +249,9 @@ class KConfigFragmentTest extends DifferentialTesting {
     @Test def testSelectOverDepends2() {
         checkTestModelBruteForce("src/test/resources/selectoverdepends2.config")
     }
+    @Test def testTriHiddenSelect() {
+        checkTestModelBruteForce("src/test/resources/trihiddenselect.config")
+    }
 
 
     //    TODO check IO_DELAY_0X80 and DEFAULT_IO_DELAY_TYPE relationship in arch/x86/Kconfig.debug

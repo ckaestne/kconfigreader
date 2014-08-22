@@ -390,7 +390,7 @@ case class Item(val name: String, model: KConfigModel) {
             // notDefault -> !this | dep1 | dep2 | ... | depn
             if (isTristate) {
                 result ::= nopromptCond implies (MODULES implies (default_y.not implies selectedBy.foldLeft(this.fexpr_y.not)((expr, sel) => (sel._1.fexpr_y and sel._2.fexpr_y) or expr)))
-                result ::= nopromptCond implies (MODULES implies (default_m.not implies selectedBy.foldLeft(this.fexpr_m.not)((expr, sel) => (sel._1.fexpr_m and sel._2.fexpr_both) or expr)))
+                result ::= nopromptCond implies (MODULES implies (default_m.not implies selectedBy.foldLeft(this.fexpr_m.not)((expr, sel) => (sel._1.fexpr_both and sel._2.fexpr_both) or expr)))
                 result ::= nopromptCond implies (MODULES.not implies (default_both.not implies selectedBy.foldLeft(this.fexpr_y.not)((expr, sel) => (sel._1.fexpr_both and sel._2.fexpr_both) or expr)))
             } else if (!isNonBoolean) {
                 //if _type == boolean

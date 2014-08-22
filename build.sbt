@@ -20,6 +20,8 @@ libraryDependencies += "junit" % "junit" % "4.8.2" % "test"
 
 libraryDependencies += "com.novocode" % "junit-interface" % "0.6" % "test"
 
+testListeners <<= target.map(t => Seq(new eu.henkelmann.sbt.JUnitXmlTestsListener(t.getAbsolutePath)))
+
 //generate typechef.sh file with full classpath
 TaskKey[File]("mkrun") <<= (baseDirectory, fullClasspath in Runtime, mainClass in Runtime) map {
     (base, cp, main) =>

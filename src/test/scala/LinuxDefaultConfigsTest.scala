@@ -22,7 +22,7 @@ class LinuxDefaultConfigsTest extends LinuxTestInfrastructure {
 
         //generate allnoconfig
         val cmd = configTool + " " + configCommand + " " + kconfigFile("x86")
-        assert(Process(cmd, workingDir, ("ARCH", "x86"), ("KERNELVERSION", "3.11")).! == 0, "failed executing " + configTool + " " + cmd)
+        assert(Process(cmd, workingDir, ("ARCH", "x86"), ("KERNELVERSION", "3.11")).! == 0, "failed executing " + cmd)
 
 
         val allnoconfig = readConfigFile(new File(workingDir, ".config"))
@@ -31,10 +31,10 @@ class LinuxDefaultConfigsTest extends LinuxTestInfrastructure {
 
         val d = FeatureExprFactory.createDefinedExternal _
 
-        def myassert(condition: Boolean, msg: String) = /*assert(condition, msg) // */ if (!condition) System.err.println(msg)
+        def myassert(condition: Boolean, msg: String) = assert(condition, msg) // */ if (!condition) System.err.println(msg)
 
         for ((feature, value) <- allnoconfig) {
-            //            println(feature + " = " + value)
+            println(feature + " = " + value)
 
             if (value == "y")
                 myassert(d(feature).isSatisfiable(fm), "%s=%s, but %s not satisfiable".format(feature, value, feature))

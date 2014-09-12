@@ -31,10 +31,10 @@ class LinuxDefaultConfigsTest extends LinuxTestInfrastructure {
 
         val d = FeatureExprFactory.createDefinedExternal _
 
-        def myassert(condition: Boolean, msg: String) = assert(condition, msg) // */ if (!condition) System.err.println(msg)
+        def myassert(condition: Boolean, msg: String) = /*assert(condition, msg) // */ if (!condition) System.err.println(msg)
 
         for ((feature, value) <- allnoconfig) {
-            println(feature + " = " + value)
+            //            println(feature + " = " + value)
 
             if (value == "y")
                 myassert(d(feature).isSatisfiable(fm), "%s=%s, but %s not satisfiable".format(feature, value, feature))

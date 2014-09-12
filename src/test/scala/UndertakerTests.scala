@@ -35,3 +35,26 @@ object UndertakerTests {
 
 }
 
+
+@RunWith(value = classOf[Parameterized])
+class UndertakerTests2(fmFile: File) extends DifferentialTesting {
+    @Test def runTest = {
+        println(fmFile)
+        checkTestModelBruteForce(fmFile.getPath)
+    }
+
+
+}
+
+object UndertakerTests2 {
+
+
+    @Parameters def parameters: java.util.Collection[Array[File]] = {
+        val r = new java.util.ArrayList[Array[File]]()
+        for (dir <- new File("src/test/resources/undertaker2/").listFiles() if dir.isDirectory;
+             v <- dir.listFiles if v.getName.endsWith(".fm"))
+            r.add(Array(v))
+        r
+    }
+
+}

@@ -103,6 +103,8 @@ trait DifferentialTesting {
     def genAllCombinations(kconfigFile: String, workingDir: File, fm: KConfigModel) {
         val configs = explodeConfigs(fm.items.values.filter(s => !s.isChoice).toList.sortBy(_.name))
 
+        assert(configs.size <= 4096, "Refusing to execute a brute-force comparison against %d configurations; simplify the kconfig file".format(configs.size))
+
         val result: List[(String, Boolean /*expectedValid*/ , Boolean /*correctResult*/ )] = for (config <- configs) yield {
             val partialAssignment = getPartialAssignment(fm, config)
             val isSat = (fm.getFM and partialAssignment).isSatisfiable

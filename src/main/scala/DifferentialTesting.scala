@@ -92,7 +92,7 @@ trait DifferentialTesting {
         val rsf = if (rsfFile == null) new File(workingDir, "tmp.rsf") else rsfFile
         rsf.createNewFile()
         Process(dumpconfTool.format(kconfigFile, rsfFile), workingDir).#>(rsf).!
-        new RSFReader().readRSF(rsf)
+        new XMLDumpReader().readRSF(rsf)
     }
 
 
@@ -168,7 +168,7 @@ trait DifferentialTesting {
 
         for ((feature, value) <- config) {
 
-            val item = fm.getItem(feature)
+            val item = fm.findItem(feature)
 
             if (item.isChoice) {}
             else if (item.isTristate) {
@@ -290,9 +290,9 @@ trait DifferentialTesting {
 
     def genAllCombinationsFromPartial(kconfigFile: String, workingDir: File, fm: KConfigModel, featureSet: Set[String], minimizeConfigurations: Boolean = true) {
         def cleanAssignment(l: Set[String], model: KConfigModel): Set[String] =
-            l.filterNot(fm.getItem(_).isChoice).filter(s => s.endsWith("_MODULE") || model.getItem(s).isDefined)
+            l.filterNot(fm.findItem(_).isChoice).filter(s => s.endsWith("_MODULE") || model.findItem(s).isDefined)
 
-        val configs = explodeConfigs(cleanAssignment(featureSet, fm).map(fm.getItem))
+        val configs = explodeConfigs(cleanAssignment(featureSet, fm).map(fm.findItem))
 
         val result: List[(String, Boolean /*expectedValid*/ , Boolean /*correctResult*/ )] = for (config <- configs) yield {
             val partialAssignment = getPartialAssignment(fm, config)
@@ -348,7 +348,7 @@ trait DifferentialTesting {
 
         var result: Map[String, String] = Map()
         for (f <- disabled) {
-            if (fm.getItem(f.feature).isChoice) {
+            if (fm.findItem(f.feature).isChoice) {
                 /*nothing*/
             }
             else if (f.feature.endsWith("_MODULE"))
@@ -359,7 +359,7 @@ trait DifferentialTesting {
                 result += (f.feature -> "n")
         }
         for (f <- enabled) {
-            if (fm.getItem(f.feature).isChoice) {
+            if (fm.findItem(f.feature).isChoice) {
                 /*nothing*/
             }
             else if (f.feature.endsWith("_MODULE"))
@@ -367,7 +367,7 @@ trait DifferentialTesting {
             else if (f.feature contains "=") {
                 val k = f.feature.take(f.feature.indexOf("="))
                 var v = f.feature.substring(f.feature.indexOf("=") + 1)
-                if (fm.getItem(k)._type == StringType && v != "n")
+                if (fm.findItem(k)._type == StringType && v != "n")
                     v = "\"" + v + "\""
                 result += (k -> v)
             } else

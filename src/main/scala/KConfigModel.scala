@@ -26,13 +26,16 @@ class KConfigModel() {
 
     import KConfigModel.MODULES
 
-    val items: collection.mutable.Map[String, Item] = collection.mutable.Map()
+    val items: collection.mutable.Map[Int, Item] = collection.mutable.Map()
     val choices: collection.mutable.Map[String, Choice] = collection.mutable.Map()
 
 
     //helper function to find an item. creates a new item if the item does not exist yet
-    def getItem(itemName: String): Item =
-        items.getOrElseUpdate(itemName, Item(itemName, this))
+    def getItem(id: Int): Item =
+        items.getOrElseUpdate(id, Item(id, this))
+
+    def findItem(itemName: String): Item =
+        items.values.find(_.name == itemName).get
 
     //helper function to find a choice. creates a new item if the choice does not exist yet
     def getChoice(choiceName: String): Choice =
@@ -51,7 +54,7 @@ class KConfigModel() {
     def getConstraints: List[FeatureExpr] =
         (items.values.flatMap(_.getConstraints) ++
             choices.values.flatMap(_.getConstraints)).toList ++
-            (if (!items.contains(MODULES.feature)) List(MODULES.not) else Nil) //if no MODULES item, exclude it explicitly
+            (if (!items.exists(_._2.name == MODULES.feature)) List(MODULES.not) else Nil) //if no MODULES item, exclude it explicitly
 
 
     private var cachedFM: Option[FeatureExpr] = None
@@ -202,12 +205,13 @@ class KConfigModelException(msg: String) extends Exception(msg)
  * conditions are always expressed as Expr constraints supporting three-value logic and
  * nonboolean constraints. FeatureExpr constraints can be derived from them
  */
-case class Item(val name: String, model: KConfigModel) {
+case class Item(val id: Int, model: KConfigModel) {
 
     import KConfigModel.MODULES
     import FExprHelper._
 
     //internal representation
+    var name: String = "undef"
     var _type: ItemType = BoolType
     var hasPrompt: Expr = Not(YTrue())
     private[kconfig] var default: List[(Expr /*value*/ , Expr /*visible*/ )] = Nil
@@ -278,6 +282,11 @@ case class Item(val name: String, model: KConfigModel) {
      */
     def setPrompt(p: Expr) {
         this.hasPrompt = p
+    }
+
+    def setName(name: String): Item = {
+        this.name = name
+        this
     }
 
     /**
@@ -574,16 +583,16 @@ case class Item(val name: String, model: KConfigModel) {
 
 
     def getDefault_y(defaults: Map[String, FeatureExpr]) =
-        defaults.filterKeys(model.items.contains(_)).map(
-            e => model.getItem(e._1).fexpr_y and e._2
+        defaults.filterKeys(k => model.items.exists(_._2.name == k)).map(
+            e => model.findItem(e._1).fexpr_y and e._2
         ).foldLeft(
                 defaults.getOrElse("y", False))(
                 _ or _
             )
 
     def getDefault_m(defaults: Map[String, FeatureExpr]) =
-        defaults.filterKeys(model.items.contains(_)).map(
-            e => model.getItem(e._1).fexpr_m and e._2
+        defaults.filterKeys(k => model.items.exists(_._2.name == k)).map(
+            e => model.findItem(e._1).fexpr_m and e._2
         ).foldLeft(
                 defaults.getOrElse("m", False))(
                 _ or _

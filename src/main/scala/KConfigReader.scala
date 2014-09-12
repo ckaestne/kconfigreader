@@ -74,7 +74,7 @@ object KConfigReader extends App {
 
     //reading model
     println("reading model")
-    val model = new RSFReader().readRSF(rsfFile)
+    val model = new XMLDumpReader().readRSF(rsfFile)
 
     println("getting constraints")
     var allconstraints = model.getConstraints

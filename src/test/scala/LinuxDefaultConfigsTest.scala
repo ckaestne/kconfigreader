@@ -46,8 +46,8 @@ class LinuxDefaultConfigsTest extends LinuxTestInfrastructure {
             } else {
                 //nonboolean
                 val v = if (value.startsWith("\"") && value.endsWith("\"")) value.drop(1).dropRight(1) else value
-                myassert(x86model.getItem(feature).knownNonBooleanValues contains v, "%s=%s not modeled with default values in kconfig".format(feature, value))
-                myassert(x86model.getItem(feature).getNonBooleanValue(v).isSatisfiable(fm), "%s=%s not satisfiable".format(feature, value))
+                myassert(x86model.findItem(feature).knownNonBooleanValues contains v, "%s=%s not modeled with default values in kconfig".format(feature, value))
+                myassert(x86model.findItem(feature).getNonBooleanValue(v).isSatisfiable(fm), "%s=%s not satisfiable".format(feature, value))
             }
         }
 

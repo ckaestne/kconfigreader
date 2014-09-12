@@ -27,7 +27,7 @@ class KConfigFragmentTest extends DifferentialTesting {
         checkTestModelBruteForce("src/test/resources/dep2.config")
     }
 
-    @Test def testSelK() {
+    @Test def testSel() {
         checkTestModelBruteForce("src/test/resources/sel.config")
     }
 

@@ -318,7 +318,7 @@ char* getSymType(enum symbol_type t) {
 		case S_UNKNOWN: return "unknown";
 		case S_BOOLEAN: return "boolean";
 		case S_TRISTATE: return "tristate";
-		case S_INT: return "int";
+		case S_INT: return "integer";
 		case S_HEX: return "hex";
 		case S_STRING: return "string";
 		case S_OTHER: return "other";
@@ -351,14 +351,16 @@ void dumpsymref(FILE *out, struct symbol *s) {
 	else if (s==&symbol_no) 
 		fprintf(out, "n");
 	else if ((s->flags & SYMBOL_CONST)) 
-		fprintf(out, "\"%s\"", s->name);
+		fprintf(out, "'%s'", s->name);
+	else if (s->type==S_INT || s->type==S_HEX || s->type==S_STRING)
+		fprintf(out, "'%s'", s->name);
 	else
-		fprintf(out, "S@%d", s);
+		fprintf(out, "S@%d, %d", s, s->type);
 }
 
 void dumpexpr(FILE *out, struct expr *e) {
 
-
+if (!e) {fprintf(out, "ERROR"); return;}
 	switch (e->type) {
 	case E_SYMBOL:
 		dumpsymref(out, e->left.sym);
@@ -410,14 +412,16 @@ void dumpexpr(FILE *out, struct expr *e) {
 	case E_LIST:
 		fprintf(out, "(");
 		dumpsymref(out, e->right.sym);
-		fprintf(out, " ^ ");
-		dumpexpr(out, e->left.expr);
+		if (e->left.expr) {
+			fprintf(out, " ^ ");
+			dumpexpr(out, e->left.expr);
+		}
 		fprintf(out, ")");
 		break;
 	case E_RANGE:
 		fprintf(out, "[");
 		dumpsymref(out, e->left.sym);
-		fprintf(out, "!=");
+		fprintf(out, ",");
 		dumpsymref(out, e->right.sym);
 		fprintf(out, "]");
 		break;
@@ -451,7 +455,7 @@ void dumpprop(FILE *out, struct property *prop) {
 
 void dumpsymbol(FILE *out, struct symbol *sym) {
 	struct property *prop;
-	while (sym) {
+	//while (sym) {
 		fprintf(out, "<symbol type=\"%s\" flags=\"%d\" id=\"%d\">\n", getSymType(sym->type), sym->flags, sym);
 
 		if (sym->name)	
@@ -462,8 +466,8 @@ void dumpsymbol(FILE *out, struct symbol *sym) {
        	}
 
 		fprintf(out, "</symbol>\n");
-		sym = sym->next;
-	}
+		//sym = sym->next;
+	//}
 }
 
 void dumpmenu(FILE *out, struct menu *menu) {

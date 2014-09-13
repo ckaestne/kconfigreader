@@ -604,7 +604,7 @@ case class Item(val id: Int, model: KConfigModel) {
 
 
 case class Choice(val name: String) {
-    var required: String = ""
+    var required: Boolean = false
     var _type: ItemType = BoolType
     var items: List[Item] = Nil
 
@@ -623,7 +623,7 @@ case class Choice(val name: String) {
         this
     }
 
-    def setRequired(p: String) = {
+    def setRequired(p:Boolean) = {
         this.required = p
         this
     }

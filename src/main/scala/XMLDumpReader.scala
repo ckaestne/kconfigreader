@@ -13,6 +13,10 @@ import scala.xml.NodeSeq
  */
 class XMLDumpReader {
 
+    val SYMBOL_OPTIONAL  = 0x0100
+    val SYMBOL_CHOICE     = 0x0010
+    var choiceID=0
+    def nextChoiceId() = {choiceID+=1; choiceID}
 
     /**
      * reads a .rsf file produced by dumpconf into an internal representation
@@ -40,12 +44,46 @@ class XMLDumpReader {
             assert(expr.size == 1)
             parser.parseName(expr text)
         }
+        def readList(expr:NodeSeq): List[Name] = {
+            assert(expr.size==1)
+            parser.parseList(expr text)
+        }
+
+        def hasFlag(sym: NodeSeq, flag: Int): Boolean = {
+            val flags = (sym \ "@flags").text.toInt
+            return (flags & flag)!=0
+        }
+
+        def readChoice(item: Item, menu:NodeSeq){
+            val choices = readList((menu \ "symbol" \ "property").filter(p=>(p \\ "@type").text == "choice") \ "expr")
+
+            item.setChoice()
+            val choice = model.getChoice(item.name)
+            choice.setRequired(!hasFlag(menu\"symbol", SYMBOL_OPTIONAL))
+            for (c<-choices)
+                choice.addItem(c.n)
+
+            //choices. there is a corresponding item, which is marked as choice as well
+            //                model.getChoice(itemName).setRequired(substrs(2)).setType(substrs(3))
+            //                model.getItem(itemName).setChoice()
+            //            } else
+            //            if (command == "ChoiceItem") {
+            //                //connect item to a choice, if it is part of a choice
+            //                model.getChoice(substrs(2)).addItem(model.getItem(itemName))
+            //
+
+        }
+
         def readMenu(menu: NodeSeq) {
             if ((menu \ "symbol" size) == 0) return;
-            assert((menu \ "symbol" size) == 1)
+            assert((menu \ "symbol" size) == 1, "%d symbols in a menu (only one expected)".format((menu \ "symbol" size) ))
 
             val itemId = (menu \ "symbol" \ "@id" text).toInt
-            val itemName = menu \ "symbol" \ "name" text
+            var itemName = (menu \ "symbol" \ "name").text
+            val isChoice = hasFlag(menu \ "symbol", SYMBOL_CHOICE)
+            assert(isChoice || itemName.size>0,"empty non-choice symbol name")
+            if (isChoice && itemName.isEmpty)
+                itemName="CHOICE_"+nextChoiceId()
             val item = model.getItem(itemId).setName(itemName)
 
             item.setDefined().setType(menu \ "symbol" \ "@type" text)
@@ -58,6 +96,11 @@ class XMLDumpReader {
 
             item.setPrompt(readExpr((menu \ "property").filter(p => (p \ "@type").text == "prompt") \ "visible" \ "expr"))
 
+            //TODO dependencies
+            if (isChoice)
+                readChoice(item, menu)
+
+            //choices
         }
 
 
@@ -158,7 +201,7 @@ class XMLDumpReader {
             choiceItem.tristateChoice = choice.isTristate
             if (choiceItem.hasPrompt != Not(YTrue()))
                 choiceItem.setDependsAnd(choiceItem.hasPrompt)
-            choiceItem.setPrompt(if (choice.required == "optional") YTrue() else Not(YTrue()))
+            choiceItem.setPrompt(if (!choice.required) YTrue() else Not(YTrue()))
             choiceItem.default = List((TristateConstant('y'), choiceItem.depends.getOrElse(YTrue())))
 
         }
@@ -200,7 +243,10 @@ class XMLDumpReader {
             case Success(r, _) => r
             case NoSuccess(msg, _) => throw new Exception("error parsing " + s + " " + msg)
         }
-
+        def parseList(s: String): List[Name] = parseAll(list, s) match {
+            case Success(r, _) => r
+            case NoSuccess(msg, _) => throw new Exception("error parsing " + s + " " + msg)
+        }
         //implications
         def expr: Parser[Expr] = dterm
 
@@ -253,29 +299,17 @@ class XMLDumpReader {
             case _ ~ id => Name(fm.getItem(id.toInt))
         }
 
+        def list:Parser[List[Name]] = "(" ~> name ~ opt("^" ~> list) <~ ")" ^^ {
+            case n ~ l => n::l.getOrElse(Nil)
+        }
+
         def symbol: Parser[Symbol] =
             ("y" | "m" | "n") ^^ {
                 s => TristateConstant(s.head)
-            } | name
-
-        //        |        ID ^^ {
-        //                    s =>
-        //                        try {
-        //                            s.toInt
-        //                            //if that's successful, it's an integer constant
-        //                            NonBooleanConstant(s)
-        //                        } catch {
-        //                            case e: NumberFormatException =>
-        //                                Name(fm.getItem(s))
-        //                        }
-        //
-        //                } |
+            } | name |
         "'" ~> anychar <~ "'" ^^ {
             s =>
-            //this is a stupid hack because I cannot distinguish between 'y' and y in dumpconf
-            //not sure if this is even possible in kconfig's internal representation at all
-                if (Set("y", "m", "n") contains s) TristateConstant(s.head)
-                else NonBooleanConstant(s)
+                NonBooleanConstant(s)
         }
 
 

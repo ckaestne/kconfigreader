@@ -352,10 +352,10 @@ void dumpsymref(FILE *out, struct symbol *s) {
 		fprintf(out, "n");
 	else if ((s->flags & SYMBOL_CONST)) 
 		fprintf(out, "'%s'", s->name);
-	else if (s->type==S_INT || s->type==S_HEX || s->type==S_STRING)
+	else if (s->type==S_UNKNOWN)
 		fprintf(out, "'%s'", s->name);
 	else
-		fprintf(out, "S@%d, %d", s, s->type);
+		fprintf(out, "S@%d", s);
 }
 
 void dumpexpr(FILE *out, struct expr *e) {
@@ -364,18 +364,6 @@ if (!e) {fprintf(out, "ERROR"); return;}
 	switch (e->type) {
 	case E_SYMBOL:
 		dumpsymref(out, e->left.sym);
-		// if (e->left.sym->name){
-		// 	if (isConstant(e->left.sym))
-		// 		fn(data, NULL, "'");
-		// 	fn(data, e->left.sym, e->left.sym->name);
-		// 	if (isConstant(e->left.sym))
-		// 		fn(data, NULL, "'");
-		// }else if (e->left.sym == modules_sym)
-  //                       fn(data, NULL, "MODULES");
-  //               else if (sym_is_choice(e->left.sym))
-		// 	fn(data, NULL, choicestring);
-  //               else
-		// 	fn(data, NULL, "UNKNOWN_NODE");
 		break;
 	case E_NOT:
 		fprintf(out, "!");
@@ -471,15 +459,15 @@ void dumpsymbol(FILE *out, struct symbol *sym) {
 }
 
 void dumpmenu(FILE *out, struct menu *menu) {
-	struct property *prop;
+//	struct property *prop;
 	struct symbol *sym;
 
-	fprintf(out, "<menu>\n");
+	fprintf(out, "<menu flags=\"%d\">\n", menu->flags);
 	if ((sym = menu->sym))
 			dumpsymbol(out, sym);
-	if ((prop = menu->prompt)) {
-			dumpprop(out, prop);
-	}
+//	if ((prop = menu->prompt)) {
+//			dumpprop(out, prop);
+//	}
 	if (menu->dep) {
 		fprintf(out, "<dep>");
 		dumpexpr(out, menu->dep);

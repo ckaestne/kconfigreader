@@ -91,7 +91,7 @@ class XMLDumpReader {
             for (prop <- menu \ "symbol" \ "property" if (prop \ "@type" text) == "default")
                 item.setDefault(readExpr(prop \ "expr"), readExpr(prop \ "visible" \ "expr"))
             for (prop <- menu \ "symbol" \ "property" if (prop \ "@type" text) == "select")
-                item.setSelectedBy(readName(prop \ "expr").n, readExpr(prop \ "visible" \ "expr"))
+                readName(prop \ "expr").n.setSelectedBy(item, readExpr(prop \ "visible" \ "expr"))
 
 
             item.setPrompt(readExpr((menu \ "property").filter(p => (p \ "@type").text == "prompt") \ "visible" \ "expr"))

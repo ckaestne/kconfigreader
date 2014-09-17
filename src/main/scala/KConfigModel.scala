@@ -460,6 +460,18 @@ case class Item(val id: Int, model: KConfigModel) {
             result ::= promptCondition.fexpr_both implies getNonBooleanValue("n").not
         }
 
+
+        //when they have a nonoptional prompt, choices need to be selected (as m or y)
+        //also choices require their promptcondition if selected
+        if (isChoice) {
+            val choice = model.getChoice(this.name)
+            if (choice.required) {
+                result ::= promptCondition.fexpr_both implies this.fexpr_both
+            }
+            result ::= this.fexpr_both implies promptCondition.fexpr_both
+        }
+
+
         result
     } else List(fexpr_both.not())
 
@@ -623,7 +635,7 @@ case class Choice(val name: String) {
         this
     }
 
-    def setRequired(p:Boolean) = {
+    def setRequired(p: Boolean) = {
         this.required = p
         this
     }
@@ -638,9 +650,9 @@ case class Choice(val name: String) {
 
     def getConstraints: List[FeatureExpr] = {
         var result: List[FeatureExpr] = List()
-        //whether choices are mandatory or depend on others are set by the Items abstraction, not here
-        //choice -> at least one child
-        result ::= (this.fexpr_both implies (promptItems.foldLeft(False)(_ or _.fexpr_both)))
+
+        //choice (=y) -> at least one child (=y)
+        result ::= (this.fexpr_y implies (promptItems.foldLeft(False)(_ or _.fexpr_y)))
         //every option (even those without prompts) implies the choice
         result ++= items.map(_.fexpr_both implies this.fexpr_both)
         //children can only select "m" if entire choice is "m"

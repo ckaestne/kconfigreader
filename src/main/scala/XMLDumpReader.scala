@@ -1,6 +1,6 @@
 package de.fosd.typechef.kconfig
 
-import java.io.File
+import java.io.{BufferedReader, FileReader, File}
 import util.parsing.combinator._
 import util.matching.Regex
 import scala.Some
@@ -25,7 +25,12 @@ class XMLDumpReader {
      * reads a .rsf file produced by dumpconf into an internal representation
      */
     def readRSF(file: File): KConfigModel = {
-        val xmlRoot = scala.xml.XML.loadFile(file)
+        val reader = new BufferedReader(new FileReader(file))
+        //skip lines in the beginning until empty line with "." marking the start
+        var line = reader.readLine()
+        while (line != "." && line != null)
+            line = reader.readLine()
+        val xmlRoot = scala.xml.XML.load(reader)
 
         val model = new KConfigModel()
 
@@ -43,7 +48,7 @@ class XMLDumpReader {
                 assert(expr.size == 1)
                 parser.parseExpr(expr text)
             }
-        def readName(expr: NodeSeq): Name = {
+        def readName(expr: NodeSeq): Option[Name] = {
             assert(expr.size == 1)
             parser.parseName(expr text)
         }
@@ -102,12 +107,15 @@ class XMLDumpReader {
                 itemName = "CHOICE_" + nextChoiceId()
             val item = model.getItem(itemId).setName(itemName)
 
-            item.setDefined().setType(symbol \ "@type" text)
+            item.setDefined()
+
+            //            if (!isChoice)
+            item.setType(symbol \ "@type" text)
 
             for (prop <- getProperty(symbol, "default"))
                 item.setDefault(readExpr(prop \ "expr"), readExpr(prop \ "visible" \ "expr"))
             for (prop <- getProperty(symbol, "select"))
-                readName(prop \ "expr").n.setSelectedBy(item, readExpr(prop \ "visible" \ "expr"))
+                readName(prop \ "expr").map(_.n.setSelectedBy(item, readExpr(prop \ "visible" \ "expr")))
 
 
             item.setPrompt(hasPrompt(symbol))
@@ -223,10 +231,10 @@ class XMLDumpReader {
             //dependencies attached to prompts are interpreted as normal dependencies instead
             val choiceItem = model.findItem(choice.name)
             choiceItem.tristateChoice = choice.isTristate
-            if (choiceItem.hasPrompt != Not(YTrue()))
-                choiceItem.setDependsAnd(choiceItem.hasPrompt)
-            choiceItem.setPrompt(if (!choice.required) YTrue() else Not(YTrue()))
-            choiceItem.default = List((TristateConstant('y'), choiceItem.depends.getOrElse(YTrue())))
+            //            if (choiceItem.hasPrompt != Not(YTrue()))
+            //                choiceItem.setDependsAnd(choiceItem.hasPrompt)
+            //            choiceItem.setPrompt(if (!choice.required) YTrue() else Not(YTrue()))
+            //            choiceItem.default = List((TristateConstant('y'), choiceItem.depends.getOrElse(YTrue())))
 
         }
 
@@ -263,7 +271,7 @@ class XMLDumpReader {
             case Success(r, _) => r
             case NoSuccess(msg, _) => throw new Exception("error parsing " + s + " " + msg)
         }
-        def parseName(s: String): Name = parseAll(name, s) match {
+        def parseName(s: String): Option[Name] = parse(opt(name), s) match {
             case Success(r, _) => r
             case NoSuccess(msg, _) => throw new Exception("error parsing " + s + " " + msg)
         }

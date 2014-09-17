@@ -525,6 +525,7 @@ int main(int ac, char **av)
 	setenv("ARCH", arch, 1);
 	setenv("KERNELVERSION", "2.6.30-vamos", 1);
 	conf_parse(av[1]);
+	fprintf(stdout, "\n.\n");
 	myconfdump(stdout);
 	return 0;
 }

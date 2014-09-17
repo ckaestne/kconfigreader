@@ -50,7 +50,14 @@ trait DifferentialTesting {
 
         println("**********\n" +
             "** " + kconfigFile)
-        println(model.getConstraints.mkString("\n"))
+        for (item <- model.items.values) {
+            println("//" + item.name)
+            println(item.getConstraints.mkString("\n"))
+        }
+        for (item <- model.choices.values) {
+            println("//" + item.name + "?")
+            println(item.getConstraints.mkString("\n"))
+        }
         //        model.items.values.map(i=>println(i.name+": "+i.knownValues.mkString(", ")))
 
         genAllCombinations(kconfigFile, workingDir, model)

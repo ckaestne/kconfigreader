@@ -91,7 +91,7 @@ trait DifferentialTesting {
         assert(new File(workingDir, kconfigFile).exists(), "kconfig file does not exist")
         val rsf = if (rsfFile == null) new File(workingDir, "tmp.rsf") else rsfFile
         rsf.createNewFile()
-        Process(dumpconfTool.format(kconfigFile, rsfFile), workingDir).#>(rsf).!
+        Process(dumpconfTool.format(kconfigFile, rsfFile), workingDir).#>(rsf).!!
         new XMLDumpReader().readRSF(rsf)
     }
 

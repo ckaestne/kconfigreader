@@ -13,10 +13,13 @@ import scala.xml.NodeSeq
  */
 class XMLDumpReader {
 
-    val SYMBOL_OPTIONAL  = 0x0100
-    val SYMBOL_CHOICE     = 0x0010
-    var choiceID=0
-    def nextChoiceId() = {choiceID+=1; choiceID}
+    val SYMBOL_OPTIONAL = 0x0100
+    val SYMBOL_CHOICE = 0x0010
+    var choiceID = 0
+    def nextChoiceId() = {
+        choiceID += 1;
+        choiceID
+    }
 
     /**
      * reads a .rsf file produced by dumpconf into an internal representation
@@ -44,24 +47,33 @@ class XMLDumpReader {
             assert(expr.size == 1)
             parser.parseName(expr text)
         }
-        def readList(expr:NodeSeq): List[Name] = {
-            assert(expr.size==1)
+        def readList(expr: NodeSeq): List[Name] = {
+            assert(expr.size == 1)
             parser.parseList(expr text)
         }
 
         def hasFlag(sym: NodeSeq, flag: Int): Boolean = {
             val flags = (sym \ "@flags").text.toInt
-            return (flags & flag)!=0
+            return (flags & flag) != 0
         }
 
-        def readChoice(item: Item, menu:NodeSeq){
-            val choices = readList((menu \ "symbol" \ "property").filter(p=>(p \\ "@type").text == "choice") \ "expr")
+        def hasPrompt(symbol: NodeSeq): Expr = {
+            val prompts = getProperty(symbol, "prompt") ++ getProperty(symbol, "menu")
+            assert(prompts.size <= 1, "multiple prompts?")
+            if (prompts isEmpty)
+                Not(YTrue())
+            else readExpr(prompts \ "visible" \ "expr")
+        }
+
+        def readChoice(item: Item, symbol: NodeSeq) {
+            val choices = readList(getProperty(symbol, "choice") \ "expr")
 
             item.setChoice()
             val choice = model.getChoice(item.name)
-            choice.setRequired(!hasFlag(menu\"symbol", SYMBOL_OPTIONAL))
-            for (c<-choices)
+            choice.setRequired(!hasFlag(symbol, SYMBOL_OPTIONAL))
+            for (c <- choices)
                 choice.addItem(c.n)
+            choice.setType(symbol \ "@type" text)
 
             //choices. there is a corresponding item, which is marked as choice as well
             //                model.getChoice(itemName).setRequired(substrs(2)).setType(substrs(3))
@@ -74,33 +86,45 @@ class XMLDumpReader {
 
         }
 
-        def readMenu(menu: NodeSeq) {
-            if ((menu \ "symbol" size) == 0) return;
-            assert((menu \ "symbol" size) == 1, "%d symbols in a menu (only one expected)".format((menu \ "symbol" size) ))
+        def getProperty(symbol: NodeSeq, proptype: String): NodeSeq =
+            (symbol \ "property") filter (prop => (prop \ "@type" text) == proptype)
 
-            val itemId = (menu \ "symbol" \ "@id" text).toInt
-            var itemName = (menu \ "symbol" \ "name").text
-            val isChoice = hasFlag(menu \ "symbol", SYMBOL_CHOICE)
-            assert(isChoice || itemName.size>0,"empty non-choice symbol name")
+        def readMenu(menu: NodeSeq) {
+            val symbol = menu \ "symbol"
+            if ((symbol size) == 0) return;
+            assert((symbol size) == 1, "%d symbols in a menu (only one expected)".format((symbol size)))
+
+            val itemId = (symbol \ "@id" text).toInt
+            var itemName = (symbol \ "name").text
+            val isChoice = hasFlag(symbol, SYMBOL_CHOICE)
+            assert(isChoice || itemName.size > 0, "empty non-choice symbol name")
             if (isChoice && itemName.isEmpty)
-                itemName="CHOICE_"+nextChoiceId()
+                itemName = "CHOICE_" + nextChoiceId()
             val item = model.getItem(itemId).setName(itemName)
 
-            item.setDefined().setType(menu \ "symbol" \ "@type" text)
+            item.setDefined().setType(symbol \ "@type" text)
 
-            for (prop <- menu \ "symbol" \ "property" if (prop \ "@type" text) == "default")
+            for (prop <- getProperty(symbol, "default"))
                 item.setDefault(readExpr(prop \ "expr"), readExpr(prop \ "visible" \ "expr"))
-            for (prop <- menu \ "symbol" \ "property" if (prop \ "@type" text) == "select")
+            for (prop <- getProperty(symbol, "select"))
                 readName(prop \ "expr").n.setSelectedBy(item, readExpr(prop \ "visible" \ "expr"))
 
 
-            item.setPrompt(readExpr((menu \ "property").filter(p => (p \ "@type").text == "prompt") \ "visible" \ "expr"))
+            item.setPrompt(hasPrompt(symbol))
 
-            //TODO dependencies
-            if (isChoice)
-                readChoice(item, menu)
+            //dependency in newer versions of kconfig is defined in a symbol property's visibility
+            for (prop <- getProperty(symbol, "symbol")) {
+                val dep = prop \ "visible" \ "expr"
+                if (!dep.isEmpty)
+                    item.setDepends(readExpr(dep))
+            }
+
+
 
             //choices
+            if (isChoice)
+                readChoice(item, symbol)
+
         }
 
 
@@ -299,18 +323,18 @@ class XMLDumpReader {
             case _ ~ id => Name(fm.getItem(id.toInt))
         }
 
-        def list:Parser[List[Name]] = "(" ~> name ~ opt("^" ~> list) <~ ")" ^^ {
-            case n ~ l => n::l.getOrElse(Nil)
+        def list: Parser[List[Name]] = "(" ~> name ~ opt("^" ~> list) <~ ")" ^^ {
+            case n ~ l => n :: l.getOrElse(Nil)
         }
 
         def symbol: Parser[Symbol] =
             ("y" | "m" | "n") ^^ {
                 s => TristateConstant(s.head)
             } | name |
-        "'" ~> anychar <~ "'" ^^ {
-            s =>
-                NonBooleanConstant(s)
-        }
+                "'" ~> anychar <~ "'" ^^ {
+                    s =>
+                        NonBooleanConstant(s)
+                }
 
 
         def ID: Regex = "[A-Za-z0-9_]+".r

@@ -5,7 +5,7 @@ import java.io._
 import de.fosd.typechef.featureexpr.{SingleFeatureExpr, FeatureExprFactory, FeatureExpr}
 import FeatureExprFactory._
 import scala._
-import scala.sys.process.Process
+import scala.sys.process.{ProcessLogger, Process}
 
 /**
  * differential testing infrastructure and tests for kconfig
@@ -27,7 +27,7 @@ trait DifferentialTesting {
     //may be overwritten by specific mixins for specific execution environments
     //the tool paths are relative to the working directory, but $PWD can be used to
     //substitute the absolute path of this project's root
-    def dumpconfTool = (sys.env.getOrElse("DUMPCONF", "$PWD/binary/dumpconf") + " %s > %s").replace("$PWD", new File(".").getAbsolutePath)
+    def dumpconfTool = (sys.env.getOrElse("DUMPCONF", "$PWD/binary/dumpconf") + " %s").replace("$PWD", new File(".").getAbsolutePath)
 
     def linuxTreeRoot = sys.env.getOrElse("LINUXROOT", "src/test/resources/linux/")
 
@@ -98,7 +98,15 @@ trait DifferentialTesting {
         assert(new File(workingDir, kconfigFile).exists(), "kconfig file does not exist")
         val rsf = if (rsfFile == null) new File(workingDir, "tmp.rsf") else rsfFile
         rsf.createNewFile()
-        Process(dumpconfTool.format(kconfigFile, rsfFile), workingDir).#>(rsf).!!
+        val cmd = dumpconfTool.format(kconfigFile)
+        try {
+            Process(cmd, workingDir).#>(rsf).!!(ProcessLogger(f => System.err.println(f)))
+        } catch {
+            case e: RuntimeException =>
+                System.err.println("failed executing %s in %s".format(cmd, workingDir))
+                throw e
+        }
+        Thread.sleep(100)
         new XMLDumpReader().readRSF(rsf)
     }
 

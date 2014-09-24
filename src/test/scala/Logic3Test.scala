@@ -13,8 +13,8 @@ class Logic3Test {
     @Test
     def test1 {
         val model = new KConfigModel()
-        val a = Name(model.findItem("A").setType("tristate"))
-        val b = Name(model.findItem("B").setType("tristate"))
+        val a = Name(model.getItem(1).setName("A").setType("tristate"))
+        val b = Name(model.getItem(2).setName("B").setType("tristate"))
 
         //        val f = And(a, b)
         val f =

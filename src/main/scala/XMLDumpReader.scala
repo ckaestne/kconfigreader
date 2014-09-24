@@ -56,6 +56,10 @@ class XMLDumpReader {
             assert(expr.size == 1)
             parser.parseList(expr text)
         }
+        def readRange(expr: NodeSeq): (Expr, Expr) = {
+            assert(expr.size == 1)
+            parser.parseRange(expr text)
+        }
 
         def hasFlag(sym: NodeSeq, flag: Int): Boolean = {
             val flags = (sym \ "@flags").text.toInt
@@ -64,10 +68,9 @@ class XMLDumpReader {
 
         def hasPrompt(symbol: NodeSeq): Expr = {
             val prompts = getProperty(symbol, "prompt") ++ getProperty(symbol, "menu")
-            assert(prompts.size <= 1, "multiple prompts?")
             if (prompts isEmpty)
                 Not(YTrue())
-            else readExpr(prompts \ "visible" \ "expr")
+            else (for (prompt <- prompts) yield readExpr(prompt \ "visible" \ "expr")).reduce(Or(_, _))
         }
 
         def readChoice(item: Item, symbol: NodeSeq) {
@@ -116,16 +119,26 @@ class XMLDumpReader {
                 item.setDefault(readExpr(prop \ "expr"), readExpr(prop \ "visible" \ "expr"))
             for (prop <- getProperty(symbol, "select"))
                 readName(prop \ "expr").map(_.n.setSelectedBy(item, readExpr(prop \ "visible" \ "expr")))
+            for (prop <- getProperty(symbol, "range")) {
+                val range = parseBounds(readRange(prop \ "expr"), item.isHex)
+                if (range.isDefined)
+                    item.addRange(range.get._1, range.get._2, readExpr(prop \ "visible" \ "expr"))
+            }
 
 
             item.setPrompt(hasPrompt(symbol))
 
-            //dependency in newer versions of kconfig is defined in a symbol property's visibility
+            //dependency in newer versions of kconfig is defined in a symbol property's visibility,
+            //in older versions through a <dep> tag on the menu
             for (prop <- getProperty(symbol, "symbol")) {
                 val dep = prop \ "visible" \ "expr"
                 if (!dep.isEmpty)
                     item.setDepends(readExpr(dep))
+                else
+                    item.setDepends(YTrue())
             }
+            for (dep <- menu \ "dep")
+                item.setDepends(readExpr(dep))
 
 
 
@@ -250,16 +263,15 @@ class XMLDumpReader {
      * currently only integer numbers are supported for lower and upper bounds,
      * returning none if it cannot be parsed
      */
-    def parseBounds(boundStr: String, isHex: Boolean): Option[(Int, Int)] = {
+    def parseBounds(range: (Expr, Expr), isHex: Boolean): Option[(Int, Int)] = {
+        if (!range._1.isInstanceOf[NonBooleanConstant]) return None
+        if (!range._2.isInstanceOf[NonBooleanConstant]) return None
         def convert(v: String): Int = if (isHex) Integer.parseInt(v.drop(2), 16) else v.toInt
 
-        if (boundStr == "") return None
-        if (boundStr.take(2) != "\"[") return None
-        if (boundStr.takeRight(2) != "]\"") return None
-        val s = boundStr.substring(2, boundStr.length - 2).split(" ")
-        if (s.length != 2) return None
         try {
-            return Some((convert(s(0)), convert(s(1))))
+            return Some((
+                convert(range._1.asInstanceOf[NonBooleanConstant].v),
+                convert(range._2.asInstanceOf[NonBooleanConstant].v)))
         } catch {
             case e: NumberFormatException => return None
         }
@@ -267,7 +279,16 @@ class XMLDumpReader {
 
     class ConstraintParser(fm: KConfigModel) extends RegexParsers {
 
-        def parseExpr(s: String): Expr = parseAll(expr, s) match {
+        /**
+         * this IGNORE thing is a stupid hack that seems required for older versions of
+         * kconfig. Whenever there is a dependency on `m` it also depends on an unnamed
+         * item. There seems no distinguishable characteristic really, so an
+         * item without a name, with flag SYMBOL_AUTO, and without SYMBOL_CHOICE will
+         * be printed as IGNORE and will be removed from expressions before parsing.
+         * @param s
+         * @return
+         */
+        def parseExpr(s: String): Expr = parseAll(expr, s.replace("m && IGNORE", "m").replace("m || !IGNORE", "m")) match {
             case Success(r, _) => r
             case NoSuccess(msg, _) => throw new Exception("error parsing " + s + " " + msg)
         }
@@ -276,6 +297,10 @@ class XMLDumpReader {
             case NoSuccess(msg, _) => throw new Exception("error parsing " + s + " " + msg)
         }
         def parseList(s: String): List[Name] = parseAll(list, s) match {
+            case Success(r, _) => r
+            case NoSuccess(msg, _) => throw new Exception("error parsing " + s + " " + msg)
+        }
+        def parseRange(s: String): (Expr, Expr) = parseAll(range, s) match {
             case Success(r, _) => r
             case NoSuccess(msg, _) => throw new Exception("error parsing " + s + " " + msg)
         }
@@ -333,6 +358,10 @@ class XMLDumpReader {
 
         def list: Parser[List[Name]] = "(" ~> name ~ opt("^" ~> list) <~ ")" ^^ {
             case n ~ l => n :: l.getOrElse(Nil)
+        }
+
+        def range: Parser[(Expr, Expr)] = "[" ~> (expr <~ ",") ~ expr <~ "]" ^^ {
+            case a ~ b => (a, b)
         }
 
         def symbol: Parser[Symbol] =

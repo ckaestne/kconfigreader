@@ -1,1 +1,2 @@
-gcc dumpconf.c ../../LinuxAnalysis/ll/scripts/kconfig/zconf.tab.o -I ../../LinuxAnalysis/ll/scripts/kconfig/ -Wall -o dumpconf
+gcc dumpconf.c ../../LinuxAnalysis/l/scripts/kconfig/zconf.tab.o -I ../../LinuxAnalysis/l/scripts/kconfig/ -Wall -o dumpconf
+cp dumpconf ../binary/

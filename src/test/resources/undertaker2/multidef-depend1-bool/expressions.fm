@@ -1,6 +1,8 @@
 config MODULES
-	bool 
-	default y
+  bool "mod"
+  default y
+  option modules
+
 
 
 #booleans

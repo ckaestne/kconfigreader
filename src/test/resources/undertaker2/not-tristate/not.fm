@@ -4,9 +4,11 @@ config MODULES
   option modules
 
 
-config FOO
-	tristate
-	default !m
+
+#config FOO
+#	tristate
+#	default !m
+
 
 config BAR
 	tristate

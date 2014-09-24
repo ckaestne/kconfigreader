@@ -128,17 +128,23 @@ class XMLDumpReader {
 
             item.setPrompt(hasPrompt(symbol))
 
+            var hasProp = false
             //dependency in newer versions of kconfig is defined in a symbol property's visibility,
             //in older versions through a <dep> tag on the menu
             for (prop <- getProperty(symbol, "symbol")) {
                 val dep = prop \ "visible" \ "expr"
-                if (!dep.isEmpty)
+                if (!dep.isEmpty) {
                     item.setDepends(readExpr(dep))
-                else
-                    item.setDepends(YTrue())
+                    hasProp = true
+                }
             }
-            for (dep <- menu \ "dep")
-                item.setDepends(readExpr(dep))
+            if (!hasProp)
+                for (dep <- menu \ "dep") {
+                    item.setDepends(readExpr(dep))
+                    hasProp = true
+                }
+            if (!hasProp)
+                item.setDepends(YTrue())
 
 
 
@@ -285,12 +291,15 @@ class XMLDumpReader {
          * item. There seems no distinguishable characteristic really, so an
          * item without a name, with flag SYMBOL_AUTO, and without SYMBOL_CHOICE will
          * be printed as IGNORE and will be removed from expressions before parsing.
-         * @param s
+         * @param sl
          * @return
          */
-        def parseExpr(s: String): Expr = parseAll(expr, s.replace("m && IGNORE", "m").replace("m || !IGNORE", "m")) match {
-            case Success(r, _) => r
-            case NoSuccess(msg, _) => throw new Exception("error parsing " + s + " " + msg)
+        def parseExpr(sl: String): Expr = {
+            val s = sl.replace("m && IGNORE", "m && MODULES").replace("m || !IGNORE", "m || !MODULES")
+            parseAll(expr, s) match {
+                case Success(r, _) => r
+                case NoSuccess(msg, _) => throw new Exception("error parsing " + s + " " + msg)
+            }
         }
         def parseName(s: String): Option[Name] = parse(opt(name), s) match {
             case Success(r, _) => r
@@ -356,6 +365,10 @@ class XMLDumpReader {
             case _ ~ id => Name(fm.getItem(id.toInt))
         }
 
+        def MODULES: Parser[Name] = "MODULES" ^^ {
+            _ => Name(fm.findItem("MODULES"))
+        }
+
         def list: Parser[List[Name]] = "(" ~> name ~ opt("^" ~> list) <~ ")" ^^ {
             case n ~ l => n :: l.getOrElse(Nil)
         }
@@ -367,7 +380,7 @@ class XMLDumpReader {
         def symbol: Parser[Symbol] =
             ("y" | "m" | "n") ^^ {
                 s => TristateConstant(s.head)
-            } | name |
+            } | name | MODULES |
                 "'" ~> anychar <~ "'" ^^ {
                     s =>
                         NonBooleanConstant(s)

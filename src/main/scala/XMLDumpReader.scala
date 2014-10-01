@@ -156,89 +156,7 @@ class XMLDumpReader {
 
         readSubmenu(xmlRoot)
 
-        println(model)
 
-        //        for (line <- lines) {
-        //            val substrs = line.split("\t").toList
-        //            val command = substrs(0)
-        //            val itemName: String = substrs.applyOrElse[Int, String](1, _ => "")
-        //
-        //            def cleanParseExpr(s: String): Expr = {
-        //                //drop quotes
-        //                assert(s.head == '"' && s.last == '"', "quotes expected around expression")
-        //                var str = s.drop(1).dropRight(1)
-        //                //undertaker creates some strange output when inside choices
-        //                val parentChoice = model.choices.values.find(_.items contains model.getItem(itemName))
-        //                if (parentChoice.isDefined) {
-        //                    assert(!str.contains("<choice>....."), "unsupported old undertaker-dumpconf format")
-        //                    //
-        //                    str = str.replaceFirst("^CHOICE_\\d+", "y")
-        //                    //dumpconf prints <choice> in some cases when it refers to the outer choice item
-        //                    //this should actually be preserved because it makes a difference in tristate choices
-        //                    str = str.replace("<choice>=y", parentChoice.get.name + "=y")
-        //                }
-        //                //CHOICE_0 is irrelevant noise
-        //                if (str.endsWith(" && CHOICE_0"))
-        //                    str = str.dropRight(12)
-        //                parser.parseExpr(str)
-        //            }
-        //
-        //            //parse .rsf format by looking at the initial keyword
-        //            if (command == "Item") {
-        //                //items are initialized and have a type
-        //                model.getItem(itemName).setDefined().setType(substrs(2))
-        //            } else
-        //            if (command == "HasPrompts") {
-        //                //ignore, just counts the number of prompts which is meaningless
-        //            } else
-        //            if (command == "Prompt") {
-        //                //determine under which condition there is a prompt (may be optional prompt)
-        //                val condition = cleanParseExpr(substrs(2))
-        //                model.getItem(itemName).setPrompt(condition)
-        //            } else
-        //            if (command == "Default") {
-        //                //one of possibly many default declarations; only the first default is selected
-        //                //Depends <CurrentItem> "<DefaultValue>" "<Condition>"
-        //                var defaultValue = parser.parseExpr(substrs(2).drop(1).dropRight(1))
-        //                val condition = parser.parseExpr(substrs(3).drop(1).dropRight(1))
-        //                model.getItem(itemName).setDefault(defaultValue, condition)
-        //            } else
-        //            if (command == "Depends") {
-        //                //dependency expressions (includes many internal kconfig mechanism that are internally translated into depends)
-        //                var expr = cleanParseExpr(substrs(2))
-        //                if (itemName != "MODULES") //hack for the nesting test cases. assume modules is never dependent
-        //                    model.getItem(itemName).setDepends(expr)
-        //            } else
-        //            if (command == "ItemSelects") {
-        //                //select expressions in kconfig
-        //                //ItemSelects <CurrentItem> "<TargetItem>" "<Condition>"
-        //                val targetItem = model.getItem(substrs(2).drop(1).dropRight(1))
-        //                val condition = if (substrs(3) == "\"y\"") YTrue() else parser.parseExpr(substrs(3).drop(1).dropRight(1))
-        //                targetItem.setSelectedBy(model.getItem(itemName), condition)
-        //            } else
-        //            if (command == "Choice") {
-        //                //choices. there is a corresponding item, which is marked as choice as well
-        //                model.getChoice(itemName).setRequired(substrs(2)).setType(substrs(3))
-        //                model.getItem(itemName).setChoice()
-        //            } else
-        //            if (command == "ChoiceItem") {
-        //                //connect item to a choice, if it is part of a choice
-        //                model.getChoice(substrs(2)).addItem(model.getItem(itemName))
-        //            } else
-        //            if (command == "Range") {
-        //                //range constraints for hex and int
-        //                var bounds = parseBounds(substrs(2), model.getItem(itemName).isHex)
-        //                if (!bounds.isDefined)
-        //                    System.err.println("warning: unsupported range (dynamic limits not supported): " + line)
-        //                else {
-        //                    var expr = cleanParseExpr(substrs(3))
-        //                    model.getItem(itemName).addRange(bounds.get._1, bounds.get._2, expr)
-        //                }
-        //            } else if (!command.startsWith("#")) // comments
-        //                println(command)
-        //
-        //
-        //        }
 
         //special encoding for items that are choices
         for (choice <- model.choices.values) {
@@ -249,10 +167,6 @@ class XMLDumpReader {
             //dependencies attached to prompts are interpreted as normal dependencies instead
             val choiceItem = model.findItem(choice.name)
             choiceItem.tristateChoice = choice.isTristate
-            //            if (choiceItem.hasPrompt != Not(YTrue()))
-            //                choiceItem.setDependsAnd(choiceItem.hasPrompt)
-            //            choiceItem.setPrompt(if (!choice.required) YTrue() else Not(YTrue()))
-            //            choiceItem.default = List((TristateConstant('y'), choiceItem.depends.getOrElse(YTrue())))
 
         }
 
@@ -262,25 +176,6 @@ class XMLDumpReader {
     }
 
 
-//    /**
-//     * format "[lower upper]"
-//     *
-//     * currently only integer numbers are supported for lower and upper bounds,
-//     * returning none if it cannot be parsed
-//     */
-//    def parseBounds(range: (Symbol, Symbol), isHex: Boolean): Option[(Symbol, Symbol)] = {
-//        if (!range._1.isInstanceOf[NonBooleanConstant]) return None
-//        if (!range._2.isInstanceOf[NonBooleanConstant]) return None
-//        def convert(v: String): Int = if (isHex) Integer.parseInt(v.drop(2), 16) else v.toInt
-//
-//        try {
-//            return Some((
-//                convert(range._1.asInstanceOf[NonBooleanConstant].v),
-//                convert(range._2.asInstanceOf[NonBooleanConstant].v)))
-//        } catch {
-//            case e: NumberFormatException => return None
-//        }
-//    }
 
     class ConstraintParser(fm: KConfigModel) extends RegexParsers {
 
@@ -315,31 +210,7 @@ class XMLDumpReader {
         //implications
         def expr: Parser[Expr] = dterm
 
-        //        "oneOf" ~ "(" ~> rep1sep(expr, ",") <~ ")" ^^ {
-        //            e => oneOf(e)
-        //        } | "atLeastOne" ~ "(" ~> rep1sep(expr, ",") <~ ")" ^^ {
-        //            e => atLeastOne(e)
-        //        } | "atMostOne" ~ "(" ~> rep1sep(expr, ",") <~ ")" ^^ {
-        //            e => atMostOne(e)
-        //        } | aterm
-        //
-        //    def aterm: Parser[Expr] =
-        //        bterm ~ opt(("=>" | "implies") ~> aterm) ^^ {
-        //            case a ~ b => if (b.isDefined) a implies b.get else a
-        //        }
-        //
-        //    def bterm: Parser[Expr] =
-        //        cterm ~ opt(("<=>" | "equiv") ~> bterm) ^^ {
-        //            case a ~ b => if (b.isDefined) a equiv b.get else a
-        //        }
-        //
-        //    //mutually exclusion
-        //    def cterm: Parser[Expr] =
-        //        dterm ~ opt(("<!>" | "mex") ~> cterm) ^^ {
-        //            case a ~ b => if (b.isDefined) a mex b.get else a
-        //        }
-        //
-        //    //||
+
         def dterm: Parser[Expr] =
             term ~ rep(("||") ~> dterm) ^^ {
                 case a ~ bs => bs.foldLeft(a)(Or(_, _))
@@ -392,7 +263,6 @@ class XMLDumpReader {
 
         def anychar: Regex = "[^']*".r //any char except '
 
-        //        def Int: Regex = "^\\d+$".r
     }
 
 

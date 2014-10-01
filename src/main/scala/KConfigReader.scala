@@ -53,7 +53,7 @@ object KConfigReader extends App {
     val options = nextOption(Map(), arglist)
 
 
-    val dumpconf = options.getOrElse("dumpconf", "../undertaker/kconfig/dumpconf")
+    val dumpconf = options.getOrElse("dumpconf", "binary/dumpconf")
     val kconfigPath = options("kconfigpath")
     val out = options("out")
 

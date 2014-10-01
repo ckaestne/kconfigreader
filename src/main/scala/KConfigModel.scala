@@ -130,6 +130,12 @@ class KConfigModel() {
      * should only be called from kconfigreader after all items are read
      */
     def findKnownValues {
+        def symbol2values(s: Symbol): Set[String] = s match {
+            case NonBooleanConstant(c) => Set(c)
+            case TristateConstant(c) => Set("" + c)
+            case Name(n) => n.knownNonBooleanValues
+        }
+
         for (item <- items.values) {
             item.knownNonBooleanValues = item._type match {
                 case BoolType => Set()
@@ -142,12 +148,8 @@ class KConfigModel() {
             //add all default values
             item.knownNonBooleanValues ++= item.getNonBooleanDefaults()
 
-            //add all extreme values of ranges
-            item.knownNonBooleanValues ++=
-                (if (item.isHex)
-                    item.ranges.flatMap(range => Set("0x" + Integer.toHexString(range._1), "0x" + Integer.toHexString(range._2)))
-                else
-                    item.ranges.flatMap(range => Set(range._1.toString, range._2.toString)))
+            //add all extreme values of ranges and all possible values if ranges refer to other items (defined before)
+            item.knownNonBooleanValues ++= item.ranges.flatMap(range => symbol2values(range._1) ++ symbol2values(range._2))
         }
 
 
@@ -224,7 +226,7 @@ case class Item(val id: Int, model: KConfigModel) {
     private[kconfig] var default: List[(Expr /*value*/ , Expr /*visible*/ )] = Nil
     var depends: Option[Expr] = None
     var selectedBy: List[(Item, Expr)] = Nil
-    var ranges: List[(Int, Int, Expr)] = Nil
+    var ranges: List[(Symbol, Symbol, Expr)] = Nil
     // an item may be created because it's referenced - when it's never used it is stored as undefined
     var isDefined: Boolean = false
     //item is a choice? marker only (used for filtering):
@@ -334,7 +336,7 @@ case class Item(val id: Int, model: KConfigModel) {
     }
 
 
-    def addRange(lower: Int, upper: Int, condition: Expr) = {
+    def addRange(lower: Symbol, upper: Symbol, condition: Expr) = {
         val newCondition = And(condition, Not(ranges.map(_._3).foldRight[Expr](Not(YTrue()))(Or(_, _))))
         ranges ::=(lower, upper, newCondition)
         this
@@ -452,14 +454,7 @@ case class Item(val id: Int, model: KConfigModel) {
             result ++= atMostOneList(values)
 
             //constraints for ranges
-            for ((lower, upper, expr) <- this.ranges)
-                for (value <- knownNonBooleanValues /*without n*/ ) {
-                    val v = if (isHex) Integer.parseInt(value.drop(2), 16) else value.toInt
-                    if (v < lower)
-                        result ::= expr.fexpr_both implies getNonBooleanValue(value).not
-                    if (v > upper)
-                        result ::= expr.fexpr_both implies getNonBooleanValue(value).not
-                }
+            result ++= getRangeConstraints()
         }
 
         //nonboolean features cannot be "n" if there is a prompt
@@ -482,6 +477,39 @@ case class Item(val id: Int, model: KConfigModel) {
         result
     } else List(fexpr_both.not())
 
+
+    private def getRangeConstraints(): List[FeatureExpr] = {
+        def parseInt(s: String, isHex: Boolean): Int = if (isHex) Integer.parseInt(s.drop(2), 16) else s.toInt
+        def getValues(s: Symbol): Set[(FeatureExpr, Int)] = s match {
+            case NonBooleanConstant(c) =>
+                val value = parseInt(c, this.isHex)
+                Set((True, value))
+            case TristateConstant(c) =>
+                val value = if (c == 'y') 2 else if (c == 'm') 1 else 0
+                Set((True, value))
+            case Name(item) =>
+                assert(item.isNonBoolean, "range dependency on boolean item not supported")
+                val svalues = item.knownNonBooleanValues
+                for (s <- svalues)
+                yield (item.getNonBooleanValue(s), parseInt(s, item.isHex))
+        }
+        assert(this.isNonBoolean, "range constraints can only be produced for nonboolean values with integer meaning")
+        var result: List[FeatureExpr] = Nil
+        //force comparison on integers
+        for ((lower, upper, expr) <- this.ranges)
+            for (value <- knownNonBooleanValues /*without n*/ ) {
+                val v = parseInt(value, this.isHex)
+
+                for ((lowervalExpr, lowervalue) <- getValues(lower))
+                    if (v < lowervalue)
+                        result ::= (expr.fexpr_both and lowervalExpr) implies this.getNonBooleanValue(value).not
+                for ((uppervalExpr, uppervalue) <- getValues(upper))
+                    if (v > uppervalue)
+                        result ::= (expr.fexpr_both and uppervalExpr) implies this.getNonBooleanValue(value).not
+            }
+
+        result
+    }
 
     /**
      * get the default values as strings

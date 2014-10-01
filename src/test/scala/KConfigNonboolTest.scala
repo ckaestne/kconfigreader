@@ -72,6 +72,9 @@ class KConfigNonboolTest extends DifferentialTesting {
     @Test def testRange4() {
         checkTestModelBruteForce("src/test/resources/range4.config")
     }
+    @Test def testDynamicRange() {
+        checkTestModelBruteForce("src/test/resources/dynamicrange.config")
+    }
     @Test def testHexRange() {
         checkTestModelBruteForce("src/test/resources/hexrange.config")
     }

@@ -56,7 +56,7 @@ class XMLDumpReader {
             assert(expr.size == 1)
             parser.parseList(expr text)
         }
-        def readRange(expr: NodeSeq): (Expr, Expr) = {
+        def readRange(expr: NodeSeq): (Symbol, Symbol) = {
             assert(expr.size == 1)
             parser.parseRange(expr text)
         }
@@ -120,9 +120,8 @@ class XMLDumpReader {
             for (prop <- getProperty(symbol, "select"))
                 readName(prop \ "expr").map(_.n.setSelectedBy(item, readExpr(prop \ "visible" \ "expr")))
             for (prop <- getProperty(symbol, "range")) {
-                val range = parseBounds(readRange(prop \ "expr"), item.isHex)
-                if (range.isDefined)
-                    item.addRange(range.get._1, range.get._2, readExpr(prop \ "visible" \ "expr"))
+                val range = readRange(prop \ "expr")//parseBounds(, item.isHex)
+                item.addRange(range._1, range._2, readExpr(prop \ "visible" \ "expr"))
             }
 
 
@@ -263,25 +262,25 @@ class XMLDumpReader {
     }
 
 
-    /**
-     * format "[lower upper]"
-     *
-     * currently only integer numbers are supported for lower and upper bounds,
-     * returning none if it cannot be parsed
-     */
-    def parseBounds(range: (Expr, Expr), isHex: Boolean): Option[(Int, Int)] = {
-        if (!range._1.isInstanceOf[NonBooleanConstant]) return None
-        if (!range._2.isInstanceOf[NonBooleanConstant]) return None
-        def convert(v: String): Int = if (isHex) Integer.parseInt(v.drop(2), 16) else v.toInt
-
-        try {
-            return Some((
-                convert(range._1.asInstanceOf[NonBooleanConstant].v),
-                convert(range._2.asInstanceOf[NonBooleanConstant].v)))
-        } catch {
-            case e: NumberFormatException => return None
-        }
-    }
+//    /**
+//     * format "[lower upper]"
+//     *
+//     * currently only integer numbers are supported for lower and upper bounds,
+//     * returning none if it cannot be parsed
+//     */
+//    def parseBounds(range: (Symbol, Symbol), isHex: Boolean): Option[(Symbol, Symbol)] = {
+//        if (!range._1.isInstanceOf[NonBooleanConstant]) return None
+//        if (!range._2.isInstanceOf[NonBooleanConstant]) return None
+//        def convert(v: String): Int = if (isHex) Integer.parseInt(v.drop(2), 16) else v.toInt
+//
+//        try {
+//            return Some((
+//                convert(range._1.asInstanceOf[NonBooleanConstant].v),
+//                convert(range._2.asInstanceOf[NonBooleanConstant].v)))
+//        } catch {
+//            case e: NumberFormatException => return None
+//        }
+//    }
 
     class ConstraintParser(fm: KConfigModel) extends RegexParsers {
 
@@ -309,7 +308,7 @@ class XMLDumpReader {
             case Success(r, _) => r
             case NoSuccess(msg, _) => throw new Exception("error parsing " + s + " " + msg)
         }
-        def parseRange(s: String): (Expr, Expr) = parseAll(range, s) match {
+        def parseRange(s: String): (Symbol, Symbol) = parseAll(range, s) match {
             case Success(r, _) => r
             case NoSuccess(msg, _) => throw new Exception("error parsing " + s + " " + msg)
         }
@@ -373,7 +372,7 @@ class XMLDumpReader {
             case n ~ l => n :: l.getOrElse(Nil)
         }
 
-        def range: Parser[(Expr, Expr)] = "[" ~> (expr <~ ",") ~ expr <~ "]" ^^ {
+        def range: Parser[(Symbol, Symbol)] = "[" ~> (symbol <~ ",") ~ symbol <~ "]" ^^ {
             case a ~ b => (a, b)
         }
 

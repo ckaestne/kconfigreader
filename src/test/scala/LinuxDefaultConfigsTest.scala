@@ -14,7 +14,6 @@ import de.fosd.typechef.featureexpr.FeatureExprFactory
  * included some features that were considered unsatisfiable by
  * our generated dimacs files
  */
-@Ignore
 class LinuxDefaultConfigsTest extends LinuxTestInfrastructure {
 
     def checkDefaultConfig(configCommand: String) {

@@ -34,8 +34,15 @@ class KConfigModel() {
     def getItem(id: Int): Item =
         items.getOrElseUpdate(id, Item(id, this))
 
-    def findItem(itemName: String): Item =
-        items.values.find(_.name == itemName).get
+    def findItem(itemName: String): Item = {
+        val r = items.values.find(_.name == itemName)
+        assert(r.isDefined, "item %s not found".format(itemName))
+        r.get
+    }
+
+
+    def hasItem(itemName: String): Boolean =
+        items.values.exists(_.name == itemName)
 
     //helper function to find a choice. creates a new item if the choice does not exist yet
     def getChoice(choiceName: String): Choice =

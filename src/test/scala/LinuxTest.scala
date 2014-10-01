@@ -40,7 +40,6 @@ trait LinuxTestInfrastructure extends DifferentialTesting {
  * since this requires a larger setup and quite some time, these
  * tests are deactived by default
  */
-@Ignore
 class LinuxTest extends LinuxTestInfrastructure {
 
 

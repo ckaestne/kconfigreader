@@ -363,7 +363,7 @@ trait DifferentialTesting {
 
         var result: Map[String, String] = Map()
         for (f <- disabled) {
-            if (fm.findItem(f.feature).isChoice) {
+            if (fm.hasItem(f.feature) && fm.findItem(f.feature).isChoice) {
                 /*nothing*/
             }
             else if (f.feature.endsWith("_MODULE"))
@@ -374,7 +374,7 @@ trait DifferentialTesting {
                 result += (f.feature -> "n")
         }
         for (f <- enabled) {
-            if (fm.findItem(f.feature).isChoice) {
+            if (fm.hasItem(f.feature) && fm.findItem(f.feature).isChoice) {
                 /*nothing*/
             }
             else if (f.feature.endsWith("_MODULE"))

@@ -1,14 +1,16 @@
 package de.fosd.typechef.kconfig
 
-import java.io.{FileWriter, File}
-import scala.sys.process.Process
-import de.fosd.typechef.featureexpr.sat.{SATFeatureModel, SATFeatureExpr}
-import de.fosd.typechef.featureexpr.{FeatureModel, FeatureExprFactory, FeatureExpr}
+import java.io.{File, FileWriter}
+import java.lang.Math.max
+
 import de.fosd.typechef.featureexpr.FeatureExprFactory._
+import de.fosd.typechef.featureexpr.sat.{SATFeatureExpr, SATFeatureModel}
+import de.fosd.typechef.featureexpr.{FeatureExpr, FeatureExprFactory, FeatureModel}
 import org.sat4j.LightFactory
 import org.sat4j.core.{Vec, VecInt}
-import Math.max
-import org.sat4j.specs.{IVecInt, IVec}
+import org.sat4j.specs.{IVec, IVecInt}
+
+import scala.sys.process.Process
 
 
 /**
@@ -171,13 +173,17 @@ object KConfigReader extends App {
             else {
                 writer.write(("#undef CONFIG_%s\n").format(item.name))
                 for ((default, fexpr) <- defaults)
-                    writer.write(("#if %s\n  #define CONFIG_%s " + v + "\n#endif\n").format(formatExpr(fexpr), item.name, default))
+                    writer.write(("#if %s\n\t#define CONFIG_%s " + v + "\n#endif\n").format(formatExpr(fexpr), item.name, default))
             }
 
             writer.write("\n")
 
 
         }
+
+        //also write defaults for boolean options that are 1 if defined
+        for (item <- model.items.values.toList.sortBy(_.name); if item.isBoolean)
+            writer.write(("#ifdef CONFIG_%s\n\t#define CONFIG_%s 1\n#endif\n").format(item.name, item.name))
 
 
         writer.close()
@@ -203,10 +209,10 @@ object KConfigReader extends App {
         val backbone = new VecInt
         val nvars = solver.nVars()
         var stepWidth = max(1, nvars / 100)
-        println("computing completed config with " + (nvars * 2) + " SAT calls")
+        println("  computing completed.conf with " + (nvars * 2) + " SAT calls")
         for (i <- 1 to nvars) {
             if ((i % stepWidth) == 0)
-                println("computing completed config -- " + (i / stepWidth) + "%")
+                println("  computing completed.conf -- " + (i / stepWidth) + "%")
             backbone.push(i)
             if (solver.isSatisfiable(backbone)) {
                 backbone.pop().push(-i)
@@ -225,22 +231,32 @@ object KConfigReader extends App {
         val owriter = new FileWriter(openfile)
 
 
-        for (feature <- model.getFM.collectDistinctFeatureObjects.toList.sortBy(_.feature); if !(feature.feature contains "=")) {
+        def checkFeature(itemname: String) = {
+            val name = "CONFIG_" + (if (itemname.head == '\'' && itemname.last == '\'') itemname.drop(1).dropRight(1) else itemname)
 
-            val id = fm.variables(feature.feature)
-            val name = "CONFIG_" + (if (feature.feature.head == '\'' && feature.feature.last == '\'') feature.feature.drop(1).dropRight(1) else feature.feature)
+            if (fm.variables contains itemname) {
+                val id = fm.variables(itemname)
 
-            if (backbone.contains(-1 * id)) {
-                writer.write("#undef %s\n".format(name))
-                //                println("#undef " + name)
-            }
-            else if (backbone.contains(id)) {
-                writer.write("#define %s\n".format(name))
-                //                println("#define " + name)
+                if (backbone.contains(-1 * id)) {
+                    writer.write("#undef %s\n".format(name))
+                    //                println("#undef " + name)
+                }
+                else if (backbone.contains(id)) {
+                    writer.write("#define %s\n".format(name))
+                    //                println("#definere " + name)
+                } else {
+                    owriter.write(name + "\n")
+                }
             } else {
                 owriter.write(name + "\n")
             }
+        }
 
+        for (item <- model.items.values.toList.sortBy(_.name)) {
+            if (!item.isNonBoolean)
+                checkFeature(item.name)
+            if (item.isTristate)
+                checkFeature(item.modulename)
         }
 
         writer.close()

@@ -1,8 +1,7 @@
 package de.fosd.typechef.kconfig
 
-import scala.Some
-import de.fosd.typechef.featureexpr.{SingleFeatureExpr, FeatureExprFactory, FeatureExpr}
-import FeatureExprFactory._
+import de.fosd.typechef.featureexpr.FeatureExprFactory._
+import de.fosd.typechef.featureexpr.{FeatureExpr, FeatureExprFactory, SingleFeatureExpr}
 
 private object KConfigModel {
 
@@ -24,7 +23,7 @@ private object KConfigModel {
  */
 class KConfigModel() {
 
-    import KConfigModel.MODULES
+    import de.fosd.typechef.kconfig.KConfigModel.MODULES
 
     val items: collection.mutable.Map[Int, Item] = collection.mutable.Map()
     val choices: collection.mutable.Map[String, Choice] = collection.mutable.Map()
@@ -216,8 +215,8 @@ class KConfigModelException(msg: String) extends Exception(msg)
  */
 case class Item(val id: Int, model: KConfigModel) {
 
-    import KConfigModel.MODULES
-    import FExprHelper._
+    import de.fosd.typechef.kconfig.FExprHelper._
+    import de.fosd.typechef.kconfig.KConfigModel.MODULES
 
     //internal representation
     var name: String = "undef"
@@ -270,8 +269,8 @@ case class Item(val id: Int, model: KConfigModel) {
         this
     }
 
+    def isBoolean = _type == BoolType
     def isTristate = _type == TristateType
-
     def isNonBoolean = _type != BoolType && _type != TristateType
     def isHex = _type == HexType
 
@@ -659,7 +658,7 @@ case class Choice(val name: String) {
     lazy val fexpr_m = if (isTristate) FeatureExprFactory.createDefinedExternal(name + "_MODULE") else False
     lazy val fexpr_both = fexpr_m or fexpr_y
 
-    import KConfigModel.MODULES
+    import de.fosd.typechef.kconfig.KConfigModel.MODULES
 
     def setType(_type: String) = {
         this._type = _type match {

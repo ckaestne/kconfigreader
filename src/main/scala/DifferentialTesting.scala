@@ -2,10 +2,11 @@ package de.fosd.typechef.kconfig
 
 
 import java.io._
-import de.fosd.typechef.featureexpr.{SingleFeatureExpr, FeatureExprFactory, FeatureExpr}
-import FeatureExprFactory._
-import scala._
-import scala.sys.process.{ProcessLogger, Process}
+
+import de.fosd.typechef.featureexpr.FeatureExprFactory._
+import de.fosd.typechef.featureexpr.{FeatureExpr, SingleFeatureExpr}
+
+import scala.sys.process.{Process, ProcessLogger}
 
 /**
  * differential testing infrastructure and tests for kconfig
@@ -237,13 +238,7 @@ trait DifferentialTesting {
         }
 
 
-    protected def isValidConfig(kconfigFile: String, workingDir: File, config: Map[String, String]): Boolean = {
-        println("=============")
-        println("checking config: " + printConfig(config))
-
-        val configFile = new File(workingDir, ".config")
-        val writer = new FileWriter(configFile)
-
+    protected def writeConfigFile(config: Map[String, String], writer: Writer): Unit = {
         for ((k, v) <- config)
             if (Set("y", "m") contains v)
                 writer.write("CONFIG_%s=%s\n".format(k, v))
@@ -251,7 +246,15 @@ trait DifferentialTesting {
                 writer.write("# CONFIG_%s is not set\n".format(k))
             else
                 writer.write("CONFIG_%s=%s\n".format(k, v))
+    }
 
+    protected def isValidConfig(kconfigFile: String, workingDir: File, config: Map[String, String]): Boolean = {
+        println("=============")
+        println("checking config: " + printConfig(config))
+
+        val configFile = new File(workingDir, ".config")
+        val writer = new FileWriter(configFile)
+        writeConfigFile(config, writer)
         writer.close()
 
         assert(Process(configToolOldConfig.format(kconfigFile), workingDir, ("ARCH", "x86"), ("KERNELVERSION", "3.11")).! == 0, "error executing " + configToolOldConfig.format(kconfigFile))
@@ -313,9 +316,9 @@ trait DifferentialTesting {
             val partialAssignment = getPartialAssignment(fm, config)
             val isSat = (fm.getFM and partialAssignment).isSatisfiable
             val completedConf = if (isSat) {
-                genValidAssignment(kconfigFile, workingDir, fm, partialAssignment, minimizeConfigurations)
+                genValidAssignment(fm, partialAssignment, minimizeConfigurations)
             } else {
-                genInvalidAssignment(kconfigFile, workingDir, fm, partialAssignment, minimizeConfigurations)
+                genInvalidAssignment(fm, partialAssignment, minimizeConfigurations)
             }
 
             val isValid = isValidConfig(kconfigFile, workingDir, completedConf)
@@ -328,12 +331,12 @@ trait DifferentialTesting {
     }
 
 
-    def genValidAssignment(kconfigFile: String, workingDir: File, fm: KConfigModel, partialAssignment: FeatureExpr, minimizeConfigurations: Boolean = true): Map[String, String] = {
+    def genValidAssignment(fm: KConfigModel, partialAssignment: FeatureExpr, minimizeConfigurations: Boolean = true): Map[String, String] = {
         val r = (fm.getFM and partialAssignment).getSatisfiableAssignment(null, fm.getAllSymbols, minimizeConfigurations)
         satAssignmentToConfig(r, fm)
     }
 
-    def genInvalidAssignment(kconfigFile: String, workingDir: File, fm: KConfigModel, partialAssignment: FeatureExpr, minimizeConfigurations: Boolean = true): Map[String, String] = {
+    def genInvalidAssignment(fm: KConfigModel, partialAssignment: FeatureExpr, minimizeConfigurations: Boolean = true): Map[String, String] = {
         //get any assignment for the rest and overwrite the given variables
         //this will not always find out whether the assignment is actually permissable
         // (it may be permissable with another base assignment for the other options), but we can try

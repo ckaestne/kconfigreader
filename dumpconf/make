@@ -1,3 +1,0 @@
-pathToLinux=../../linux/linux26333/linux
-gcc dumpconf.c $pathToLinux/scripts/kconfig/zconf.tab.o -I $pathToLinux/scripts/kconfig/ -Wall -o dumpconf
-cp dumpconf ../binary/

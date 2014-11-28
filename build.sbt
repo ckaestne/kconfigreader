@@ -10,7 +10,9 @@ parallelExecution := false
 
 testOptions in Test += Tests.Argument("-verbosity", "1")
 
-//libraryDependencies += "de.fosd.typechef" % "frontend_2.10" % "0.3.6"
+scalacOptions ++= Seq("-deprecation", "-unchecked", "-optimise", "-feature")
+
+//libraryDependencies += "de.fosd.typechef" %% "featureexprlib" % "0.3.7"
 
 libraryDependencies += "org.scala-lang.modules" %% "scala-parser-combinators" % "1.0.2"
 

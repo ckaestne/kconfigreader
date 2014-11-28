@@ -56,9 +56,11 @@ object KConfigurationGenerator extends App with DifferentialTesting {
     val model = new XMLDumpReader().readRSF(rsfFile)
 
     for (feature <- formula.collectDistinctFeatures)
-        assert(model.hasItem(feature), "literal %s is not known in the model".format(feature))
+        assert(model.hasItem(if (feature endsWith "_MODULE") feature.dropRight(7) else feature), "literal %s is not known in the model".format(feature))
 
 
+    for (constr <- model.getConstraints)
+        assert((constr and formula).isSatisfiable(), "the formula is not satisfiable in the model constraint "+constr)
     assert((model.getFM and formula).isSatisfiable(), "the formula is not satisfiable in the model")
 
 

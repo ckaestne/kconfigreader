@@ -26,6 +26,8 @@ libraryDependencies += "junit" % "junit" % "4.11" % "test"
 
 libraryDependencies += "com.novocode" % "junit-interface" % "0.11" % "test"
 
+seq(org.scoverage.coveralls.CoverallsPlugin.coverallsSettings : _*)
+
 //generate typechef.sh file with full classpath
 TaskKey[File]("mkrun") <<= (baseDirectory, fullClasspath in Runtime, mainClass in Runtime) map {
     (base, cp, main) =>

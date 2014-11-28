@@ -1,4 +1,4 @@
-name := "TypeChef-kconfig"
+name := "kconfigreader"
 
 version := "1.0"
 

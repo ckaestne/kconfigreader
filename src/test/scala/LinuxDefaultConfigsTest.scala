@@ -14,6 +14,7 @@ import de.fosd.typechef.featureexpr.FeatureExprFactory
  * included some features that were considered unsatisfiable by
  * our generated dimacs files
  */
+ @Ignore("these tests run for a very long time. run only manually")
 class LinuxDefaultConfigsTest extends LinuxTestInfrastructure {
 
     def checkDefaultConfig(configCommand: String) {

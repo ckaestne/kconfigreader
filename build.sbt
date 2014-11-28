@@ -4,13 +4,17 @@ version := "1.0"
 
 organization := "de.fosd.typechef"
 
-scalaVersion := "2.10.4"
+scalaVersion := "2.11.4"
 
 parallelExecution := false
 
 testOptions in Test += Tests.Argument("-verbosity", "1")
 
 //libraryDependencies += "de.fosd.typechef" % "frontend_2.10" % "0.3.6"
+
+libraryDependencies += "org.scala-lang.modules" %% "scala-parser-combinators" % "1.0.2"
+
+libraryDependencies += "org.scala-lang.modules" %% "scala-xml" % "1.0.2"
 
 libraryDependencies += "org.ow2.sat4j" % "org.ow2.sat4j.core" % "2.3.5"
 

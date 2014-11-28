@@ -6,8 +6,6 @@ organization := "de.fosd.typechef"
 
 scalaVersion := "2.11.4"
 
-conflictManager := ConflictManager.strict
-
 parallelExecution := false
 
 scalacOptions ++= Seq("-deprecation", "-unchecked", "-optimise", "-feature")

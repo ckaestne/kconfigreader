@@ -257,9 +257,6 @@ class XMLDumpReader {
                         NonBooleanConstant(s)
                 }
 
-
-        def ID: Regex = "[A-Za-z0-9_]+".r
-
         def Integer: Regex = "[0-9]+".r
 
         def anychar: Regex = "[^']*".r //any char except '

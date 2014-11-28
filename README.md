@@ -9,11 +9,13 @@ Build with `sbt`
 
 
 To extract the raw data from kconfig files, this tool
-relies on a patched version of undertaker's dumpconf tool
-available here: https://github.com/ckaestne/undertaker
-(build with `make scripts/kconfig/dumpconf`)
-A binary version compiled on ubuntu 12.04 is available
-in the `binary` folder for convenience.
+relies on a utility `dumpconf`, inspired by Untertaker, that
+builds on on top of Linux's kconfig infrastructure to dump
+the internal representation in XML format. The file
+`dumpconf/dumpconf.c` must be compiled against the 
+Linux source tree that is to be analyzed.
+A binary version compiled on ubuntu 12.04 for Linux 2.3.33.6 
+is available in the `binary` folder for convenience.
 
 
 Instrunctions
@@ -28,7 +30,7 @@ where `kconfig` refers to the kconfig file that should be analyzed and `out` poi
 files that should be written (the tool will create multiple output files with
 different extensions).
 
-By default, the tool will create two files: `out.rsf` contains the output of undertaker-dumpconf, a raw
+By default, the tool will create two files: `out.rsf` contains the output of `dumpconf`, a raw
 dump of the kconfig information in a intermediate format and `out.model` contains the boolean constraints
 sorted by the feature they belong to.
 

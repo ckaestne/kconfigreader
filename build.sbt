@@ -1,4 +1,4 @@
-name := "TypeChef-kconfig"
+name := "kconfigreader"
 
 version := "1.0"
 
@@ -8,9 +8,11 @@ scalaVersion := "2.11.4"
 
 parallelExecution := false
 
-testOptions in Test += Tests.Argument("-verbosity", "1")
+scalacOptions ++= Seq("-deprecation", "-unchecked", "-optimise", "-feature")
 
-//libraryDependencies += "de.fosd.typechef" % "frontend_2.10" % "0.3.6"
+testOptions += Tests.Argument(TestFrameworks.JUnit, "-q", "-v")
+
+libraryDependencies += "de.fosd.typechef" %% "featureexprlib" % "0.3.7"
 
 libraryDependencies += "org.scala-lang.modules" %% "scala-parser-combinators" % "1.0.2"
 
@@ -20,11 +22,9 @@ libraryDependencies += "org.ow2.sat4j" % "org.ow2.sat4j.core" % "2.3.5"
 
 libraryDependencies += "de.fosd.typechef" % "javabdd_repackaged" % "1.0b2"
 
-libraryDependencies += "junit" % "junit" % "4.8.2" % "test"
+libraryDependencies += "junit" % "junit" % "4.11" % "test"
 
-libraryDependencies += "com.novocode" % "junit-interface" % "0.6" % "test"
-
-testListeners <<= target.map(t => Seq(new eu.henkelmann.sbt.JUnitXmlTestsListener(t.getAbsolutePath)))
+libraryDependencies += "com.novocode" % "junit-interface" % "0.11" % "test"
 
 //generate typechef.sh file with full classpath
 TaskKey[File]("mkrun") <<= (baseDirectory, fullClasspath in Runtime, mainClass in Runtime) map {

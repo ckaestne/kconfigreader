@@ -5,6 +5,7 @@ import util.parsing.combinator._
 import util.matching.Regex
 import scala.Some
 import scala.xml.NodeSeq
+import scala.language.postfixOps
 
 /**
  * reads the output of undertaker-dumpconf files

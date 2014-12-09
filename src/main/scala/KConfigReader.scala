@@ -3,6 +3,9 @@ package de.fosd.typechef.kconfig
 import java.io.{File, FileWriter}
 import java.lang.Math.max
 
+import de.fosd.typechef.featureexpr.FeatureExprFactory._
+import de.fosd.typechef.featureexpr.sat.{SATFeatureExpr, SATFeatureModel}
+import de.fosd.typechef.featureexpr.{FeatureExpr, FeatureExprFactory, FeatureModel}
 import org.sat4j.LightFactory
 import org.sat4j.core.{Vec, VecInt}
 import org.sat4j.specs.{IVec, IVecInt}

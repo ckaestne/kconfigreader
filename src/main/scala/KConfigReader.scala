@@ -3,9 +3,6 @@ package de.fosd.typechef.kconfig
 import java.io.{File, FileWriter}
 import java.lang.Math.max
 
-import de.fosd.typechef.featureexpr.FeatureExprFactory._
-import de.fosd.typechef.featureexpr.sat.{SATFeatureExpr, SATFeatureModel}
-import de.fosd.typechef.featureexpr.{FeatureExpr, FeatureExprFactory, FeatureModel}
 import org.sat4j.LightFactory
 import org.sat4j.core.{Vec, VecInt}
 import org.sat4j.specs.{IVec, IVecInt}
@@ -181,9 +178,12 @@ object KConfigReader extends App {
 
         }
 
-        //also write defaults for boolean options that are 1 if defined
-        for (item <- model.items.values.toList.sortBy(_.name); if item.isBoolean)
+        //also write defaults for boolean/tristate options that are 1 if defined
+        for (item <- model.items.values.toList.sortBy(_.name); if !item.isNonBoolean) {
             writer.write(("#ifdef CONFIG_%s\n\t#define CONFIG_%s 1\n#endif\n").format(item.name, item.name))
+            if (item.isTristate)
+                writer.write(("#ifdef CONFIG_%s_MODULE\n\t#define CONFIG_%s_MODULE 1\n#endif\n").format(item.name, item.name))
+        }
 
 
         writer.close()

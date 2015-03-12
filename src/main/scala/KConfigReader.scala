@@ -169,7 +169,7 @@ object KConfigReader extends App {
                 writer.write(("//WARNING: no defaults for CONFIG_%s\n" +
                     "#define CONFIG_%s %s\n").format(item.name, item.name, if (item._type == StringType) "\"\"" else "0"))
             else if (defaults.size == 1)
-                writer.write(("#define CONFIG_%s " + v + "\n").format(item.name, defaults.keys.head))
+                writer.write(("#define CONFIG_%s " + v + "\n").format(item.name, processDefault(item, defaults.keys.head)))
             else {
                 writer.write(("#undef CONFIG_%s\n").format(item.name))
                 for ((default, fexpr) <- defaults)

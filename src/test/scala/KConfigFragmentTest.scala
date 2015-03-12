@@ -255,6 +255,9 @@ class KConfigFragmentTest extends DifferentialTesting {
     @Test def testPageGuard() {
         checkTestModelBruteForce("src/test/resources/pageguard.config")
     }
+    @Test def testTriMenuVisible() {
+        checkTestModelBruteForce("src/test/resources/trimenuvisible.config")
+    }
 
 
     //    TODO check IO_DELAY_0X80 and DEFAULT_IO_DELAY_TYPE relationship in arch/x86/Kconfig.debug

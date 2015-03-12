@@ -173,7 +173,7 @@ object KConfigReader extends App {
             else {
                 writer.write(("#undef CONFIG_%s\n").format(item.name))
                 for ((default, fexpr) <- defaults)
-                    writer.write(("#if %s\n\t#define CONFIG_%s " + v + "\n#endif\n").format(formatExpr(fexpr), item.name, default))
+                    writer.write(("#if %s\n\t#define CONFIG_%s " + v + "\n#endif\n").format(formatExpr(fexpr), item.name, processDefault(item, default)))
             }
 
             writer.write("\n")
@@ -191,6 +191,18 @@ object KConfigReader extends App {
 
         writer.close()
     }
+
+    /**
+     * some values may be written to autoconf.h in a slightly sanitized from from what the user (or default) provides.
+     * for example a user may write "30f" in a hex item, which is still printed as "0x30f"
+     * for now, we are doing only very lightweight processing for issues identified through bugs. more systematic
+     * sanitization may be done later
+     */
+    private def processDefault(item: Item, default: String): String =
+        if (item.isHex && !(default startsWith "0x"))
+            "0x" +  default
+        else default
+
 
 
     /**

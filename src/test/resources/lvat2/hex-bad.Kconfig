@@ -1,0 +1,8 @@
+config RADIO_RTRACK_PORT
+	hex "RadioTrack i/o port (0x20f or 0x30f)"
+	depends on RADIO_RTRACK=y
+	default "20f"
+	help
+	  Enter either 0x30f or 0x20f here.  The card default is 0x30f, if you
+	  haven't changed the jumper setting on the card.
+

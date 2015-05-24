@@ -1,0 +1,29 @@
+
+
+config DEP_B
+    hex "Hex B"
+    default 0x001
+
+config DEP_C
+    hex "Hex C"
+    default 0x0010
+
+config DEP_X3
+    bool
+    default y if DEP_B="0x001"
+
+config DEP_X4
+    bool
+    default y if DEP_B="0x0010"
+
+config DEP_X5
+    bool
+    default y if DEP_C="0x001"
+
+config DEP_X6
+    bool
+    default y if DEP_C="0x0010"
+
+config DEP_X7
+    bool
+    default y if DEP_C=0x001

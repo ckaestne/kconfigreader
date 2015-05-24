@@ -1,0 +1,18 @@
+menu "Menu1"
+
+config A
+    bool "A"
+
+config B
+    bool "B"
+
+endmenu
+menu "Menu2"
+    visible if A
+    depends on B
+
+config C
+    bool "C"
+    default y
+
+endmenu

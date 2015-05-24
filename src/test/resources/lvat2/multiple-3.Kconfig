@@ -1,0 +1,22 @@
+config A
+    bool "Feature A"
+
+config B
+    bool "Feature B"
+config C
+    bool "Feature C"
+
+config X
+    tristate
+    default y if A
+
+config X
+    tristate
+    default n if B
+
+config X
+    tristate
+    default y if C
+
+# shows merging of definitions in the order that they are defined
+

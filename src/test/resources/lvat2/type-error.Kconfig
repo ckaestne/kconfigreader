@@ -1,0 +1,19 @@
+config MODULES
+    bool
+    default y
+
+config A
+    tristate "A"
+    default y
+
+config B
+    string
+    default "Hello, World!"
+
+config C
+    tristate
+    default y if A && B
+
+config D
+    tristate
+    default y if A || B

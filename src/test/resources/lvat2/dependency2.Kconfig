@@ -1,0 +1,16 @@
+
+config MODULES
+  bool "mod"
+  default y
+  option modules
+
+menu "Upper Bound Testing"
+
+config UPPER_A
+    tristate "UPPER A"
+
+config UPPER_B
+    tristate "UPPER B" if UPPER_A
+
+endmenu
+

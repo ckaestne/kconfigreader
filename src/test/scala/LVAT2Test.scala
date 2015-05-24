@@ -19,13 +19,8 @@ class LVAT2Test extends DifferentialTesting {
         checkTestModelBruteForce("src/test/resources/lvat2/choice-different.Kconfig")
     }
 
-    @Test def testLVAT3() {
-        try {
+    @Test@Ignore("circular dependencies ignored, reported as error by kconfig; TODO: detect as smell") def testLVAT3() {
             checkTestModelBruteForce("src/test/resources/lvat2/circular.Kconfig")
-            assert(false, "should not accept circular kconfig file")
-        } catch {
-            case e: RuntimeException => //expect kconfig error
-        }
     }
 
     @Test def testLVAT4() {

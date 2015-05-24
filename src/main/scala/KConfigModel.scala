@@ -436,7 +436,11 @@ case class Item(val id: Int, model: KConfigModel) {
                     result ::= nopromptCond implies (cond implies f)
                 }
             }
-        }
+
+            //tristate elements are only selectable as y if visible as y (if selectable at all)
+            if (isTristate) {
+                result ::= (promptCondition.fexpr_both implies (this.fexpr_y implies promptCondition.fexpr_y))
+            }        }
 
         if (isTristate) {
             result ::= (this.fexpr_y and this.fexpr_m).not

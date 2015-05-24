@@ -42,6 +42,10 @@ is deactived, X=1 means it has value 1, and so on).
 
 Additional options:
 
+  * `--fast` skips the consistency check. This speeds up extraction significantly and uses
+    much less memory, since the SAT solver is not involved. May silently produce unsatisfiable
+    models though. Omit `--fast` for checking consistency and debugging inconsistent models.
+
   * `--dumpconf [file]` provide the path to the dumpconf tool to be called from within
     this tool
 

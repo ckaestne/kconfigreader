@@ -1,0 +1,73 @@
+# TEST: renamed ARCH because that was blacklisted by testing framework
+
+config ARCH_
+	string
+	option env="ARCH_"
+
+# Select 32 or 64 bit
+config 64BIT
+	bool "64-bit kernel" if ARCH_ = "x86"
+	default ARCH_ = "x86_64"
+	---help---
+	  Say yes to build a 64-bit kernel - formerly known as x86_64
+	  Say no to build a 32-bit kernel - formerly known as i386
+
+config X86_32
+	def_bool !64BIT
+
+config X86_64
+	def_bool 64BIT
+
+
+config MODULES
+  bool "mod"
+  default y
+  option modules
+
+menuconfig A
+    tristate "A"
+
+if A && X86_32
+config X86_EXTENDED_PLATFORM
+	tristate "Support for extended (non-PC) x86 platforms"
+	default y
+	---help---
+	  If you disable this option then the kernel will only support
+	  standard PC platforms. (which covers the vast majority of
+	  systems out there.)
+
+	  If you enable this option then you'll be able to select support
+	  for the following (non-PC) 32 bit x86 platforms:
+		AMD Elan
+		NUMAQ (IBM/Sequent)
+		RDC R-321x SoC
+		SGI 320/540 (Visual Workstation)
+		Summit/EXA (IBM x440)
+		Unisys ES7000 IA32 series
+		Moorestown MID devices
+
+	  If you have one of these systems, or if you want to build a
+	  generic distribution kernel, say Y here - otherwise say N.
+endif
+
+menuconfig B
+    tristate B
+
+if B && X86_64
+config X86_EXTENDED_PLATFORM
+	tristate "Support for extended (non-PC) x86 platforms"
+	default y
+	---help---
+	  If you disable this option then the kernel will only support
+	  standard PC platforms. (which covers the vast majority of
+	  systems out there.)
+
+	  If you enable this option then you'll be able to select support
+	  for the following (non-PC) 64 bit x86 platforms:
+		ScaleMP vSMP
+		SGI Ultraviolet
+
+	  If you have one of these systems, or if you want to build a
+	  generic distribution kernel, say Y here - otherwise say N.
+endif
+

@@ -1,0 +1,43 @@
+menuconfig MISC_FILESYSTEMS
+bool "Miscellaneous filesystems"
+if MISC_FILESYSTEMS
+config JFFS2_FS
+tristate "Journalling Flash File System" if MTD
+select CRC32 if MTD
+config JFFS2_FS_DEBUG
+int "JFFS2 Debug level (0=quiet, 2=noisy)"
+depends on JFFS2_FS
+default 0
+range 0 2
+--- help ---
+Debug verbosity of ...
+config JFFS2_FS_WRITEBUFFER
+bool
+depends on JFFS2_FS
+default HAS_IOMEM
+config JFFS2_COMPRESS
+bool "Advanced compression options for JFFS2"
+depends on JFFS2_FS
+config JFFS2_ZLIB
+bool "Compress w/zlib..." if JFFS2_COMPRESS
+depends on JFFS2_FS
+select ZLIB_INFLATE
+default y
+choice
+prompt "Default compression" if JFFS2_COMPRESS
+default JFFS2_CMODE_PRIORITY
+depends on JFFS2_FS
+config JFFS2_CMODE_NONE
+bool "no compression"
+config JFFS2_CMODE_PRIORITY
+bool "priority"
+config JFFS2_CMODE_SIZE
+bool "size (EXPERIMENTAL)"
+endchoice
+endif
+
+config MTD
+    bool "MTD"
+
+config CRC32
+    bool

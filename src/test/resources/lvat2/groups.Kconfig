@@ -1,0 +1,14 @@
+config MODULES
+    bool "Module support"
+    default y
+
+choice 
+    prompt "Testing"
+
+    config A
+        tristate "A"
+
+    config B
+        tristate "B"
+
+endchoice

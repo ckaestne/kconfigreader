@@ -1,0 +1,23 @@
+choice
+	prompt "kmemcheck: default mode at boot"
+	default KMEMCHECK_ONESHOT_BY_DEFAULT
+	help
+	  This option controls the default behaviour of kmemcheck when the
+	  kernel boots and no kmemcheck= parameter is given.
+
+config KMEMCHECK_DISABLED_BY_DEFAULT
+	tristate "disabled"
+
+config KMEMCHECK_ENABLED_BY_DEFAULT
+	bool "enabled"
+
+config KMEMCHECK_ONESHOT_BY_DEFAULT
+	bool "one-shot"
+	help
+	  In one-shot mode, only the first error detected is reported before
+	  kmemcheck is disabled.
+
+endchoice
+
+config MODULES
+    bool "module support"

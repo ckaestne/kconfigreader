@@ -21,7 +21,7 @@ import scala.sys.process.Process
 object KConfigReader extends App {
 
     val usage = """
-    Usage: kconfigreader [--dumpconf pathToDumpConfTool] [--writeNonBoolean] [--reduceConstraints] [--writeCompletedConf] [--writeDimacs] pathToKconfigFile out
+    Usage: kconfigreader [--fast] [--dumpconf pathToDumpConfTool] [--writeNonBoolean] [--reduceConstraints] [--writeCompletedConf] [--writeDimacs] pathToKconfigFile out
                 """
 
     if (args.length == 0) {
@@ -46,6 +46,8 @@ object KConfigReader extends App {
                 nextOption(map ++ Map("writeCompletedConf" -> "1", "writeDimacs" -> "1"), tail)
             case "--reduceConstraints" :: tail =>
                 nextOption(map ++ Map("reduceConstraints" -> "1"), tail)
+            case "--fast" :: tail =>
+                nextOption(map ++ Map("fast" -> "1"), tail)
             case string :: string2 :: Nil if !isSwitch(string) && !isSwitch(string2) => nextOption(map ++ Map("kconfigpath" -> string, "out" -> string2), Nil)
             case option :: tail => println("Unknown option " + option)
                 println(map);
@@ -81,13 +83,16 @@ object KConfigReader extends App {
     println("getting constraints")
     var allconstraints = model.getConstraints
 
-    println("checking combined constraint")
-    val isSat = allconstraints.reduce(_ and _).isSatisfiable()
-    if (!isSat) {
-        println("checking each constraint")
-        assert(allconstraints.forall(_.isSatisfiable()), "extracted constraint is not satisfiable")
+    //perform sanity check unless "--fast" option is selected
+    if (!(options contains "fast")) {
+        println("checking combined constraint")
+        val isSat = allconstraints.reduce(_ and _).isSatisfiable()
+        if (!isSat) {
+            println("checking each constraint")
+            assert(allconstraints.forall(_.isSatisfiable()), "extracted constraint is not satisfiable")
+        }
+        assert(isSat, "extracted model is not satisfiable")
     }
-    assert(isSat, "extracted model is not satisfiable")
 
     println("writing model")
     writeModel(modelFile, model)

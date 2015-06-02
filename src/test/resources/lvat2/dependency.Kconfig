@@ -1,0 +1,19 @@
+config DEP_A
+    string "String A"
+
+config DEP_B
+    bool
+    default DEP_A
+
+config DEP_C
+    bool
+    default !DEP_A
+
+config DEP_D
+    bool
+    default DEP_A=""
+
+config MODULES
+  bool "mod"
+  default y
+  option modules

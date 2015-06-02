@@ -1,0 +1,10 @@
+config A1
+    string "A1"
+
+config A2
+    bool
+    default y if A1="Test"
+
+config A3
+    bool
+    default y if A1=""

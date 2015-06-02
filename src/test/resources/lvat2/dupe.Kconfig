@@ -1,0 +1,17 @@
+config A
+    bool "Config A - 1"
+    prompt "Config A - 2" if D
+    depends on B
+
+config A
+    bool "Config A - 3"
+    depends on C
+
+config B
+    bool
+
+config C
+    bool
+
+config D
+    bool

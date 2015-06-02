@@ -32,7 +32,7 @@ seq(org.scoverage.coveralls.CoverallsPlugin.coverallsSettings : _*)
 TaskKey[File]("mkrun") <<= (baseDirectory, fullClasspath in Runtime, mainClass in Runtime) map {
     (base, cp, main) =>
         val template = """#!/bin/sh
-java -ea -Xmx1G -Xms128m -Xss10m -classpath "%s" %s "$@"
+java -ea -Xmx2G -Xms128m -Xss10m -classpath "%s" %s "$@"
                        """
         val contents = template.format(cp.files.absString, "")
         val out = base / "run.sh"

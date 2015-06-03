@@ -14,6 +14,8 @@ trait LinuxTestInfrastructure extends DifferentialTesting {
     def kconfigFile(arch: String) = "arch/" + arch + "/Kconfig"
     val workingDir = new File(linuxTreeRoot)
 
+    override def dumpconfTool = (sys.env.getOrElse("DUMPCONF26333", "$PWD/binary/dumpconf-26333") + " %s").replace("$PWD", new File(".").getAbsolutePath)
+
     lazy val x86model = getModel("x86")
     lazy val x86kconfig = kconfigFile("x86")
     lazy val x86fm: FeatureExpr = x86model.getFM

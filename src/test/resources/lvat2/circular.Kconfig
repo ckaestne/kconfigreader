@@ -1,0 +1,12 @@
+mainmenu "Test"
+
+config D
+  bool
+  default y if !C
+
+
+config C
+  bool
+  default y if !D
+
+

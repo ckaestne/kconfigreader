@@ -1,0 +1,10 @@
+config MODULES
+    def_bool y
+
+config A1
+    tristate "A1"
+
+config B1
+    tristate "B1"
+    depends on A1
+

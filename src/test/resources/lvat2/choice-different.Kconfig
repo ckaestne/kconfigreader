@@ -1,0 +1,39 @@
+config THESIS
+    bool "Thesis"
+
+choice
+    prompt "An XOR-group"
+
+    config A
+        bool "Option A"
+
+    config B
+        bool "Option B"
+
+endchoice
+
+choice
+    prompt "A tristate group"
+
+    config C
+        tristate "Option C"
+
+    config D
+        tristate "Option D"
+
+endchoice
+
+choice
+    prompt "A MUTEX-group"
+    optional
+
+    config E
+        boolean "Option E"
+
+    config F
+        boolean "Option F"
+
+endchoice
+
+config MODULES
+    bool "Enable module support"

@@ -1,0 +1,18 @@
+if M
+if N
+
+menu "Test"
+    depends on O
+
+config B
+bool "B"
+depends on T && Y && V
+
+config C
+bool "C"
+depends on B
+
+endmenu
+
+endif
+endif

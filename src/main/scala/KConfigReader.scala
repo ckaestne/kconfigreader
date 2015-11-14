@@ -21,7 +21,7 @@ import scala.sys.process.Process
 object KConfigReader extends App {
 
     val usage = """
-    Usage: kconfigreader [--dumpconf pathToDumpConfTool] [--writeNonBoolean] [--reduceConstraints] [--writeCompletedConf] [--writeDimacs] pathToKconfigFile out
+    Usage: kconfigreader [--fast] [--dumpconf pathToDumpConfTool] [--writeNonBoolean] [--reduceConstraints] [--writeCompletedConf] [--writeDimacs] pathToKconfigFile out
                 """
 
     if (args.length == 0) {
@@ -46,6 +46,8 @@ object KConfigReader extends App {
                 nextOption(map ++ Map("writeCompletedConf" -> "1", "writeDimacs" -> "1"), tail)
             case "--reduceConstraints" :: tail =>
                 nextOption(map ++ Map("reduceConstraints" -> "1"), tail)
+            case "--fast" :: tail =>
+                nextOption(map ++ Map("fast" -> "1"), tail)
             case string :: string2 :: Nil if !isSwitch(string) && !isSwitch(string2) => nextOption(map ++ Map("kconfigpath" -> string, "out" -> string2), Nil)
             case option :: tail => println("Unknown option " + option)
                 println(map);
@@ -81,13 +83,16 @@ object KConfigReader extends App {
     println("getting constraints")
     var allconstraints = model.getConstraints
 
-    println("checking combined constraint")
-    val isSat = allconstraints.reduce(_ and _).isSatisfiable()
-    if (!isSat) {
-        println("checking each constraint")
-        assert(allconstraints.forall(_.isSatisfiable()), "extracted constraint is not satisfiable")
+    //perform sanity check unless "--fast" option is selected
+    if (!(options contains "fast")) {
+        println("checking combined constraint")
+        val isSat = allconstraints.reduce(_ and _).isSatisfiable()
+        if (!isSat) {
+            println("checking each constraint")
+            assert(allconstraints.forall(_.isSatisfiable()), "extracted constraint is not satisfiable")
+        }
+        assert(isSat, "extracted model is not satisfiable")
     }
-    assert(isSat, "extracted model is not satisfiable")
 
     println("writing model")
     writeModel(modelFile, model)
@@ -169,11 +174,11 @@ object KConfigReader extends App {
                 writer.write(("//WARNING: no defaults for CONFIG_%s\n" +
                     "#define CONFIG_%s %s\n").format(item.name, item.name, if (item._type == StringType) "\"\"" else "0"))
             else if (defaults.size == 1)
-                writer.write(("#define CONFIG_%s " + v + "\n").format(item.name, defaults.keys.head))
+                writer.write(("#define CONFIG_%s " + v + "\n").format(item.name, processDefault(item, defaults.keys.head)))
             else {
                 writer.write(("#undef CONFIG_%s\n").format(item.name))
                 for ((default, fexpr) <- defaults)
-                    writer.write(("#if %s\n\t#define CONFIG_%s " + v + "\n#endif\n").format(formatExpr(fexpr), item.name, default))
+                    writer.write(("#if %s\n\t#define CONFIG_%s " + v + "\n#endif\n").format(formatExpr(fexpr), item.name, processDefault(item, default)))
             }
 
             writer.write("\n")
@@ -181,13 +186,28 @@ object KConfigReader extends App {
 
         }
 
-        //also write defaults for boolean options that are 1 if defined
-        for (item <- model.items.values.toList.sortBy(_.name); if item.isBoolean)
+        //also write defaults for boolean/tristate options that are 1 if defined
+        for (item <- model.items.values.toList.sortBy(_.name); if !item.isNonBoolean) {
             writer.write(("#ifdef CONFIG_%s\n\t#define CONFIG_%s 1\n#endif\n").format(item.name, item.name))
+            if (item.isTristate)
+                writer.write(("#ifdef CONFIG_%s_MODULE\n\t#define CONFIG_%s_MODULE 1\n#endif\n").format(item.name, item.name))
+        }
 
 
         writer.close()
     }
+
+    /**
+     * some values may be written to autoconf.h in a slightly sanitized from from what the user (or default) provides.
+     * for example a user may write "30f" in a hex item, which is still printed as "0x30f"
+     * for now, we are doing only very lightweight processing for issues identified through bugs. more systematic
+     * sanitization may be done later
+     */
+    private def processDefault(item: Item, default: String): String =
+        if (item.isHex && !(default startsWith "0x"))
+            "0x" +  default
+        else default
+
 
 
     /**

@@ -1,0 +1,24 @@
+mainmenu "Test"
+
+config P1
+    bool "P1"
+
+config A
+  bool "A1" if P1
+  select X
+
+config P2
+    bool "P2"
+
+config A
+  bool "A2" if P2
+  select Y
+
+config X
+  bool "X"
+
+config Y
+  bool "Y"
+
+
+

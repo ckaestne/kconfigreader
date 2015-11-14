@@ -1,0 +1,18 @@
+choice
+	prompt "Choice"
+    depends on X
+	default Y
+
+config A
+	bool "A"
+
+config B
+	bool "B"
+
+endchoice
+
+config X
+    bool "X"
+
+config MODULES
+    bool "module support"

@@ -11,16 +11,16 @@ private object KConfigModel {
 }
 
 /**
- * The KConfigModel is an abstraction close to the content of the .rsf files.
- * It represents conditions as Expr statements including 3-value logic and
- * nonboolean constraints.
- *
- * The model consists of items (options). Some items can additionally be choices
- * for which additional data structures are available.
- *
- * The key feature of the model is to collect constraints as propositional
- * formulas (FeatureExpr), which is computed as parts of items and choices.
- */
+  * The KConfigModel is an abstraction close to the content of the .rsf files.
+  * It represents conditions as Expr statements including 3-value logic and
+  * nonboolean constraints.
+  *
+  * The model consists of items (options). Some items can additionally be choices
+  * for which additional data structures are available.
+  *
+  * The key feature of the model is to collect constraints as propositional
+  * formulas (FeatureExpr), which is computed as parts of items and choices.
+  */
 class KConfigModel() {
 
     import de.fosd.typechef.kconfig.KConfigModel.MODULES
@@ -48,15 +48,15 @@ class KConfigModel() {
         choices.getOrElseUpdate(choiceName, Choice(choiceName))
 
     /**
-     * debugging only
-     */
+      * debugging only
+      */
     override def toString() = items.toString() + "\n" + choices.toString()
 
     /**
-     * get all constraints from all items and choices
-     *
-     * if the MODULES option is not contained, it is explicitly disabled as an additional constraint
-     */
+      * get all constraints from all items and choices
+      *
+      * if the MODULES option is not contained, it is explicitly disabled as an additional constraint
+      */
     def getConstraints: List[FeatureExpr] =
         (items.values.flatMap(_.getConstraints) ++
             choices.values.flatMap(_.getConstraints)).toList ++
@@ -64,14 +64,15 @@ class KConfigModel() {
 
 
     private var cachedFM: Option[FeatureExpr] = None
+
     /**
-     * returns the constraints as a single formula (conjunction of all constraints)
-     *
-     * additionally performs a sanity check that the model is actually satisfiable.
-     * if it is not satisfiable, it fails with a KConfigModelException that details
-     * the first constraint that causes the contradiction. this helps debugging
-     * but might be slow
-     */
+      * returns the constraints as a single formula (conjunction of all constraints)
+      *
+      * additionally performs a sanity check that the model is actually satisfiable.
+      * if it is not satisfiable, it fails with a KConfigModelException that details
+      * the first constraint that causes the contradiction. this helps debugging
+      * but might be slow
+      */
     def getFM: FeatureExpr = {
         if (!cachedFM.isDefined) cachedFM = Some(getFM_noCache);
         cachedFM.get
@@ -95,8 +96,8 @@ class KConfigModel() {
     def getItems = items.keys.toSet
 
     /**
-     * get FeatureExpr symbols for all boolean and tristate items (thus including choices) in this model (X and X_MODULE for tristate)
-     */
+      * get FeatureExpr symbols for all boolean and tristate items (thus including choices) in this model (X and X_MODULE for tristate)
+      */
     def getBooleanSymbols: Set[SingleFeatureExpr] = {
         val i = items.values.filterNot(_.isChoice)
         val boolitems = i.filter(_._type == BoolType)
@@ -105,29 +106,29 @@ class KConfigModel() {
     }
 
     /**
-     * get FeatureExpr symbols for all items, including all known values of nonboolean options
-     *
-     * call only after the model has been initialized fully with findKnownValues
-     */
+      * get FeatureExpr symbols for all items, including all known values of nonboolean options
+      *
+      * call only after the model has been initialized fully with findKnownValues
+      */
     def getAllSymbols: Set[SingleFeatureExpr] = getBooleanSymbols ++
         (for (i <- items.values; if i.isNonBoolean; v <- i.knownNonBooleanValues) yield i.getNonBooleanValue(v))
 
     /**
-     * helper function to access all default values of all nonboolean options (and their corresponding conditions)
-     */
+      * helper function to access all default values of all nonboolean options (and their corresponding conditions)
+      */
     def getNonBooleanDefaults: Map[Item, List[(String, Expr)]] =
         items.values.filter(_.isNonBoolean).map(i => (i -> i.defaultValues)).toMap
 
     /**
-     * this is a global operation that finds possible values for all items
-     * should be called after all items are known and before computing constraints
-     *
-     * known values come from (1) defaults, (2) range expressions, and (3) literals in comparisons in any constraints
-     * (when an option is compared to a literal). for all int and hex values 0 and 1 are possible default values
-     * and for all strings "" and "nonempty" are possible default values
-     *
-     * should only be called from kconfigreader after all items are read
-     */
+      * this is a global operation that finds possible values for all items
+      * should be called after all items are known and before computing constraints
+      *
+      * known values come from (1) defaults, (2) range expressions, and (3) literals in comparisons in any constraints
+      * (when an option is compared to a literal). for all int and hex values 0 and 1 are possible default values
+      * and for all strings "" and "nonempty" are possible default values
+      *
+      * should only be called from kconfigreader after all items are read
+      */
     def findKnownValues {
         def symbol2values(s: Symbol): Set[String] = s match {
             case NonBooleanConstant(c) => Set(c)
@@ -176,43 +177,43 @@ class KConfigModel() {
 class KConfigModelException(msg: String) extends Exception(msg)
 
 /**
- * tristate to CONFIG_x translation:
- *
- * x=y
- * => #define CONFIG_x
- * => #undef CONFIG_x_MODULE
- *
- * x=m
- * => #undef CONFIG_x
- * => #define CONFIG_x_MODULE
- *
- * x=n
- * => #undef CONFIG_x
- * => #undef CONFIG_x_MODULE
- *
- */
+  * tristate to CONFIG_x translation:
+  *
+  * x=y
+  * => #define CONFIG_x
+  * => #undef CONFIG_x_MODULE
+  *
+  * x=m
+  * => #undef CONFIG_x
+  * => #define CONFIG_x_MODULE
+  *
+  * x=n
+  * => #undef CONFIG_x
+  * => #undef CONFIG_x_MODULE
+  *
+  */
 
 
 /**
- * Item represents an item/option or choice in the kconfig model.
- * each item has a name and type (boolean by default) and belongs to a kconfig model
- *
- * an item may have a prompt (possibly under some conditions; we don't care about
- * the text of the prompt or its alternatives, only the condition when it has a
- * prompt). the interpretation is fundamentally different if there is no
- * prompt, as the item assumes its default and can only be changed by constraints
- * (depends and select)
- *
- * items can have multiple defaults under different conditions.
- *
- * an item can depend on other items through an expression, whereas selectedBy is
- * an inverse constraint. it may have defaults and range conditions (possibly under a condition).
- *
- * some items are also choices.
- *
- * conditions are always expressed as Expr constraints supporting three-value logic and
- * nonboolean constraints. FeatureExpr constraints can be derived from them
- */
+  * Item represents an item/option or choice in the kconfig model.
+  * each item has a name and type (boolean by default) and belongs to a kconfig model
+  *
+  * an item may have a prompt (possibly under some conditions; we don't care about
+  * the text of the prompt or its alternatives, only the condition when it has a
+  * prompt). the interpretation is fundamentally different if there is no
+  * prompt, as the item assumes its default and can only be changed by constraints
+  * (depends and select)
+  *
+  * items can have multiple defaults under different conditions.
+  *
+  * an item can depend on other items through an expression, whereas selectedBy is
+  * an inverse constraint. it may have defaults and range conditions (possibly under a condition).
+  *
+  * some items are also choices.
+  *
+  * conditions are always expressed as Expr constraints supporting three-value logic and
+  * nonboolean constraints. FeatureExpr constraints can be derived from them
+  */
 case class Item(val id: Int, model: KConfigModel) {
 
     import de.fosd.typechef.kconfig.FExprHelper._
@@ -234,11 +235,11 @@ case class Item(val id: Int, model: KConfigModel) {
     var tristateChoice = false
 
     /**
-     * FeatureExpr representation of this item, for y, m, both (y or m), and n (!y)
-     *
-     * this is nontrivial: y is the options name or a disjunction of all values for nonbooleans
-     * m is x_MODULE for tristate options or false otherwise
-     */
+      * FeatureExpr representation of this item, for y, m, both (y or m), and n (!y)
+      *
+      * this is nontrivial: y is the options name or a disjunction of all values for nonbooleans
+      * m is x_MODULE for tristate options or false otherwise
+      */
     lazy val fexpr_y = if (isNonBoolean) False else FeatureExprFactory.createDefinedExternal(name)
     lazy val modulename = if (isTristate) this.name + "_MODULE" else name
     lazy val fexpr_m = if (isTristate) FeatureExprFactory.createDefinedExternal(modulename) else False
@@ -249,14 +250,14 @@ case class Item(val id: Int, model: KConfigModel) {
     def getNonBooleanValue(value: String): SingleFeatureExpr = FeatureExprFactory.createDefinedExternal(name + "=" + value)
 
     /**
-     * list of known nonboolean values of this item. collected by KConfigModel.findKnownValues at the
-     * end of the initialization
-     */
+      * list of known nonboolean values of this item. collected by KConfigModel.findKnownValues at the
+      * end of the initialization
+      */
     var knownNonBooleanValues: Set[String] = Set()
 
     /**
-     * set the type to one of 5 supported types
-     */
+      * set the type to one of 5 supported types
+      */
     def setType(_type: String) = {
         this._type = _type match {
             case "boolean" => BoolType
@@ -270,14 +271,17 @@ case class Item(val id: Int, model: KConfigModel) {
     }
 
     def isBoolean = _type == BoolType
+
     def isTristate = _type == TristateType
+
     def isNonBoolean = _type != BoolType && _type != TristateType
+
     def isHex = _type == HexType
 
     /**
-     * an item is defined if it is explicitly occuring in the kconfig model (in contrast
-     * to being only referenced within a constraint)
-     */
+      * an item is defined if it is explicitly occuring in the kconfig model (in contrast
+      * to being only referenced within a constraint)
+      */
     def setDefined() = {
         isDefined = true
         this
@@ -285,9 +289,9 @@ case class Item(val id: Int, model: KConfigModel) {
 
 
     /**
-     * condition under which this item has a prompt (typically y or n, but may depend on
-     * other constraints). this is a disjunction of all prompts
-     */
+      * condition under which this item has a prompt (typically y or n, but may depend on
+      * other constraints). this is a disjunction of all prompts
+      */
     def setPrompt(p: Expr) {
         this.hasPrompt = p
     }
@@ -298,38 +302,39 @@ case class Item(val id: Int, model: KConfigModel) {
     }
 
     /**
-     * marks this item as a choice. a choice object with the same name will exist in the
-     * kconfigmodel
-     */
+      * marks this item as a choice. a choice object with the same name will exist in the
+      * kconfigmodel
+      */
     def setChoice() {
         this.isChoice = true
     }
 
     /**
-     * set a default under a condition, the default can be an expression
-     * other than a literal, then the default is the value of the evaluated expression
-     */
+      * set a default under a condition, the default can be an expression
+      * other than a literal, then the default is the value of the evaluated expression
+      */
     def setDefault(defaultValue: Expr, condition: Expr) {
         this.default ::=(defaultValue, condition)
     }
 
 
     /**
-     * add a dependency (all dependencies are stored as one disjunction)
-     */
+      * add a dependency (all dependencies are stored as one disjunction)
+      */
     def setDepends(s: Expr) {
         this.depends = if (depends.isDefined) Some(Or(s, depends.get)) else Some(s)
     }
+
     /**
-     * add a dependency as conjunction to existing dependencies (used internally only)
-     */
+      * add a dependency as conjunction to existing dependencies (used internally only)
+      */
     private[kconfig] def setDependsAnd(s: Expr) {
         this.depends = if (depends.isDefined) Some(And(s, depends.get)) else Some(s)
     }
 
     /**
-     * add a selectedby clause
-     */
+      * add a selectedby clause
+      */
     def setSelectedBy(item: Item, condition: Expr = YTrue()) {
         this.selectedBy = (item, condition) :: this.selectedBy
     }
@@ -343,16 +348,16 @@ case class Item(val id: Int, model: KConfigModel) {
 
 
     /**
-     * core function to compute all the constraints of this item
-     *
-     * this computation is far from trivial and depends on many details of the
-     * kconfig semantics.
-     *
-     * modify only with great care and test cases for all supported
-     * kconfig features
-     *
-     * for fexpr_m and fexpr_y see the documentation in Expr
-     */
+      * core function to compute all the constraints of this item
+      *
+      * this computation is far from trivial and depends on many details of the
+      * kconfig semantics.
+      *
+      * modify only with great care and test cases for all supported
+      * kconfig features
+      *
+      * for fexpr_m and fexpr_y see the documentation in Expr
+      */
     def getConstraints: List[FeatureExpr] = if (isDefined || isChoice) {
         var result: List[FeatureExpr] = Nil
 
@@ -440,7 +445,8 @@ case class Item(val id: Int, model: KConfigModel) {
             //tristate elements are only selectable as y if visible as y (if selectable at all)
             if (isTristate) {
                 result ::= (promptCondition.fexpr_both implies (this.fexpr_y implies promptCondition.fexpr_y))
-            }        }
+            }
+        }
 
         if (isTristate) {
             result ::= (this.fexpr_y and this.fexpr_m).not
@@ -482,7 +488,14 @@ case class Item(val id: Int, model: KConfigModel) {
 
 
     private def getRangeConstraints(): List[FeatureExpr] = {
-        def parseLong(s: String, isHex: Boolean): Long = if (isHex) java.lang.Long.parseLong(s.drop(2), 16) else s.toLong
+        def parseLong(s: String, isHex: Boolean): Long =
+            try {
+                if (isHex) java.lang.Long.parseLong(s.drop(2), 16) else s.toLong
+            } catch {
+                case e: NumberFormatException =>
+                    System.err.println("Warning: cannot parse range constraint %s".format(s))
+                    0
+            }
         def getValues(s: Symbol): Set[(FeatureExpr, Long)] = s match {
             case NonBooleanConstant(c) =>
                 val value = parseLong(c, this.isHex)
@@ -494,7 +507,7 @@ case class Item(val id: Int, model: KConfigModel) {
                 assert(item.isNonBoolean, "range dependency on boolean item not supported")
                 val svalues = item.knownNonBooleanValues
                 for (s <- svalues)
-                yield (item.getNonBooleanValue(s), parseLong(s, item.isHex))
+                    yield (item.getNonBooleanValue(s), parseLong(s, item.isHex))
         }
         assert(this.isNonBoolean, "range constraints can only be produced for nonboolean values with integer meaning")
         var result: List[FeatureExpr] = Nil
@@ -515,10 +528,10 @@ case class Item(val id: Int, model: KConfigModel) {
     }
 
     /**
-     * get the default values as strings
-     *
-     * do not rely on this, just an approximation
-     */
+      * get the default values as strings
+      *
+      * do not rely on this, just an approximation
+      */
     def defaultValues: List[(String, Expr)] = {
         var result: List[(String, Expr)] = Nil
 
@@ -544,14 +557,14 @@ case class Item(val id: Int, model: KConfigModel) {
 
 
     /**
-     * returns the different defaults and their respective conditions
-     *
-     * this evaluates conditions to booleans(!), i.e., m and y are both considered true
-     *
-     * note that his behaves different for booleans and nonbooleans. for nonbooleans
-     * the default is typically a constantsymbol whereas for booleans it is
-     * y or n (or m)
-     */
+      * returns the different defaults and their respective conditions
+      *
+      * this evaluates conditions to booleans(!), i.e., m and y are both considered true
+      *
+      * note that his behaves different for booleans and nonbooleans. for nonbooleans
+      * the default is typically a constantsymbol whereas for booleans it is
+      * y or n (or m)
+      */
     def getDefaults(): Map[String, FeatureExpr] = {
         var result: Map[String, FeatureExpr] = Map()
         var covered: FeatureExpr = False
@@ -591,8 +604,8 @@ case class Item(val id: Int, model: KConfigModel) {
     }
 
     /**
-     * compute the set of all possible default values
-     */
+      * compute the set of all possible default values
+      */
     def getDefaultValues(): Set[String] = {
         var result: Set[String] = Set()
 
@@ -618,8 +631,8 @@ case class Item(val id: Int, model: KConfigModel) {
     }
 
     /**
-     * compute the set of all possible nonboolean default values
-     */
+      * compute the set of all possible nonboolean default values
+      */
     def getNonBooleanDefaults(): Set[String] = {
         for ((v, expr) <- default.reverse) yield
             v match {
@@ -636,17 +649,17 @@ case class Item(val id: Int, model: KConfigModel) {
         defaults.filterKeys(k => model.items.exists(_._2.name == k)).map(
             e => model.findItem(e._1).fexpr_y and e._2
         ).foldLeft(
-                defaults.getOrElse("y", False))(
-                _ or _
-            )
+            defaults.getOrElse("y", False))(
+            _ or _
+        )
 
     def getDefault_m(defaults: Map[String, FeatureExpr]) =
         defaults.filterKeys(k => model.items.exists(_._2.name == k)).map(
             e => model.findItem(e._1).fexpr_m and e._2
         ).foldLeft(
-                defaults.getOrElse("m", False))(
-                _ or _
-            )
+            defaults.getOrElse("m", False))(
+            _ or _
+        )
 
 
     override def toString = "Item " + name

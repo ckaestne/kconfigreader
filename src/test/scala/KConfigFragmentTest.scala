@@ -259,6 +259,14 @@ class KConfigFragmentTest extends DifferentialTesting {
         checkTestModelBruteForce("src/test/resources/trimenuvisible.config")
     }
 
+    @Test def testInvalidRange() {
+        checkTestModelBruteForce("src/test/resources/invalidrange.config")
+    }
+
+    @Test def testHugeRange() {
+        checkTestModelBruteForce("src/test/resources/hugerange.config")
+    }
+
 
     //    TODO check IO_DELAY_0X80 and DEFAULT_IO_DELAY_TYPE relationship in arch/x86/Kconfig.debug
 

@@ -482,26 +482,26 @@ case class Item(val id: Int, model: KConfigModel) {
 
 
     private def getRangeConstraints(): List[FeatureExpr] = {
-        def parseInt(s: String, isHex: Boolean): Int = if (isHex) Integer.parseInt(s.drop(2), 16) else s.toInt
-        def getValues(s: Symbol): Set[(FeatureExpr, Int)] = s match {
+        def parseLong(s: String, isHex: Boolean): Long = if (isHex) java.lang.Long.parseLong(s.drop(2), 16) else s.toLong
+        def getValues(s: Symbol): Set[(FeatureExpr, Long)] = s match {
             case NonBooleanConstant(c) =>
-                val value = parseInt(c, this.isHex)
+                val value = parseLong(c, this.isHex)
                 Set((True, value))
             case TristateConstant(c) =>
-                val value = if (c == 'y') 2 else if (c == 'm') 1 else 0
+                val value = if (c == 'y') 2l else if (c == 'm') 1l else 0l
                 Set((True, value))
             case Name(item) =>
                 assert(item.isNonBoolean, "range dependency on boolean item not supported")
                 val svalues = item.knownNonBooleanValues
                 for (s <- svalues)
-                yield (item.getNonBooleanValue(s), parseInt(s, item.isHex))
+                yield (item.getNonBooleanValue(s), parseLong(s, item.isHex))
         }
         assert(this.isNonBoolean, "range constraints can only be produced for nonboolean values with integer meaning")
         var result: List[FeatureExpr] = Nil
         //force comparison on integers
         for ((lower, upper, expr) <- this.ranges)
             for (value <- knownNonBooleanValues /*without n*/ ) {
-                val v = parseInt(value, this.isHex)
+                val v = parseLong(value, this.isHex)
 
                 for ((lowervalExpr, lowervalue) <- getValues(lower))
                     if (v < lowervalue)

@@ -493,7 +493,7 @@ case class Item(val id: Int, model: KConfigModel) {
                 if (isHex) java.lang.Long.parseLong(s.drop(2), 16) else s.toLong
             } catch {
                 case e: NumberFormatException =>
-                    System.err.println("Warning: cannot parse range constraint %s".format(s))
+                    System.err.println("Warning: cannot parse range constraint \"%s\"".format(s))
                     0
             }
         def getValues(s: Symbol): Set[(FeatureExpr, Long)] = s match {

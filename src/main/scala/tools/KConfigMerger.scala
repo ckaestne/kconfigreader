@@ -64,6 +64,7 @@ object KConfigMerger extends App {
 
 
     val featureModels = for ((dimacsFile, feature) <- dimacsFiles) yield {
+	println("loading "+feature.feature+" in "+dimacsFile)
         val archFeatureId = getGlobalId(feature.feature)
         //add extra constraint on ARCH feature
         val fm = loadDimacsData(Source.fromFile(dimacsFile)).map((-archFeatureId) :: _)
@@ -74,6 +75,7 @@ object KConfigMerger extends App {
     //    println(globalVariableMap)
 
 
+    println("writing result in "+out)
     writeAsDimacs(out, globalVariableMap, (archFM :: featureModels).flatten)
 
 

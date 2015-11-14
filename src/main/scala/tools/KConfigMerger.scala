@@ -14,58 +14,41 @@ import scala.io.Source
  * the idea is to merge separate models for different architectures into a single model
  * in which one can select among architectures
  *
- * takes .dimacs files and flags that describe the feature that guards their inclusion;
+ * takes .dimacs files; for each $x.dimacs file a flag __$X is created;
  * adds a constraint that exactly one of the features needs to be selected;
  * each of the previous constraints is then guarded by that architecture
  */
 object KConfigMerger extends App {
 
     val usage = """
-    Usage: kconfigmerger --dimacs <file> <flag> --dimacs <file> <flag> out
+    Usage: kconfigmerger <dimacs files> out
                 """
 
-    if (args.length == 0) {
+    if (args.length < 2) {
         println(usage);
         sys.exit(1)
     }
-    val arglist = args.toList
-    type OptionMap = Map[String, String]
-    var dimacsFiles = List[(File, SingleFeatureExpr)]()
-
-    //simple option parser
-    def nextOption(map: OptionMap, list: List[String]): OptionMap = {
-        def isSwitch(s: String) = (s(0) == '-')
-        list match {
-            case Nil => map
-            case "--dimacs" :: file :: flag :: tail =>
-                dimacsFiles ::=(new File(file), FeatureExprFactory.createDefinedExternal(flag)) //dirty
-                nextOption(map, tail)
-            case string :: Nil if !isSwitch(string) => nextOption(map ++ Map("out" -> string), Nil)
-            case option :: tail => println("Unknown option " + option)
-                println(map);
-                sys.exit(1)
-        }
-    }
-
-    val options = nextOption(Map(), arglist)
 
 
-    val out = new File(options("out"))
+
+    val dimacsFiles = args.dropRight(1).toList.map(new File(_))
+    val out = new File(args.last)
     assert(dimacsFiles.size > 1, "need at least two dimacs files")
-    dimacsFiles.map(f => assert(f._1.exists, "dimacs file does not exist: " + f._1))
+    dimacsFiles.map(f => assert(f.exists, "dimacs file does not exist: " + f))
 
     var globalVariableMap = Map[String, Int]()
     var globalVariableCounter = 0
 
+    def fileToFlag(file: File): SingleFeatureExpr = FeatureExprFactory.createDefinedExternal("__FILE_"+file.getName.takeWhile(_ != '.').toUpperCase())
 
     //exactly one architecture needs to be selected
-    val archFM = genArchConstraints(for (d <- dimacsFiles) yield getGlobalId(d._2.feature))
+    val archFM = genArchConstraints(for (d <- dimacsFiles) yield getGlobalId(fileToFlag(d).feature))
     //    println(archFM)
 
 
-    val featureModels = for ((dimacsFile, feature) <- dimacsFiles) yield {
-	println("loading "+feature.feature+" in "+dimacsFile)
-        val archFeatureId = getGlobalId(feature.feature)
+    val featureModels = for (dimacsFile <- dimacsFiles) yield {
+	println("loading "+dimacsFile)
+        val archFeatureId = getGlobalId(fileToFlag(dimacsFile).feature)
         //add extra constraint on ARCH feature
         val fm = loadDimacsData(Source.fromFile(dimacsFile)).map((-archFeatureId) :: _)
 

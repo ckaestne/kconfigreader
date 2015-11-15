@@ -488,40 +488,40 @@ case class Item(val id: Int, model: KConfigModel) {
 
 
     private def getRangeConstraints(): List[FeatureExpr] = {
-        def parseLong(s: String, isHex: Boolean): Long =
+        def parseLong(s: String, isHex: Boolean): Option[Long] =
             try {
-                if (isHex) java.lang.Long.parseLong(s.drop(2), 16) else s.toLong
+                if (isHex) Some(java.lang.Long.parseLong(s.drop(2), 16)) else Some(s.toLong)
             } catch {
                 case e: NumberFormatException =>
                     System.err.println("Warning: cannot parse range constraint \"%s\"".format(s))
-                    0
+                    None
             }
         def getValues(s: Symbol): Set[(FeatureExpr, Long)] = s match {
             case NonBooleanConstant(c) =>
                 val value = parseLong(c, this.isHex)
-                Set((True, value))
+                value.map(v=>Set((True, v))).getOrElse(Set())
             case TristateConstant(c) =>
                 val value = if (c == 'y') 2l else if (c == 'm') 1l else 0l
                 Set((True, value))
             case Name(item) =>
                 assert(item.isNonBoolean, "range dependency on boolean item not supported")
                 val svalues = item.knownNonBooleanValues
-                for (s <- svalues)
-                    yield (item.getNonBooleanValue(s), parseLong(s, item.isHex))
+                for (s <- svalues; value <- parseLong(s, item.isHex))
+                    yield (item.getNonBooleanValue(s), value)
         }
         assert(this.isNonBoolean, "range constraints can only be produced for nonboolean values with integer meaning")
         var result: List[FeatureExpr] = Nil
         //force comparison on integers
         for ((lower, upper, expr) <- this.ranges)
             for (value <- knownNonBooleanValues /*without n*/ ) {
-                val v = parseLong(value, this.isHex)
-
-                for ((lowervalExpr, lowervalue) <- getValues(lower))
-                    if (v < lowervalue)
-                        result ::= (expr.fexpr_both and lowervalExpr) implies this.getNonBooleanValue(value).not
-                for ((uppervalExpr, uppervalue) <- getValues(upper))
-                    if (v > uppervalue)
-                        result ::= (expr.fexpr_both and uppervalExpr) implies this.getNonBooleanValue(value).not
+                parseLong(value, this.isHex).map(v=> {
+                    for ((lowervalExpr, lowervalue) <- getValues(lower))
+                        if (v < lowervalue)
+                            result ::= (expr.fexpr_both and lowervalExpr) implies this.getNonBooleanValue(value).not
+                    for ((uppervalExpr, uppervalue) <- getValues(upper))
+                        if (v > uppervalue)
+                            result ::= (expr.fexpr_both and uppervalExpr) implies this.getNonBooleanValue(value).not
+                })
             }
 
         result

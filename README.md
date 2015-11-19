@@ -1,6 +1,8 @@
 kconfigreader
 ===========
 
+[![Build Status](https://travis-ci.org/ckaestne/kconfigreader.svg?branch=master)](https://travis-ci.org/ckaestne/kconfigreader)
+
 tooling to read kconfig files and convert them into 
 formulas for further reasoning (primarily for the
 TypeChef infrastructure, but may be used elsewhere).

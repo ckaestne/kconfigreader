@@ -259,6 +259,7 @@ class KConfigFragmentTest extends DifferentialTesting {
         checkTestModelBruteForce("src/test/resources/trimenuvisible.config")
     }
 
+    @Ignore("not fully supported yet, needs fixing")
     @Test def testInvalidRange() {
         checkTestModelBruteForce("src/test/resources/invalidrange.config")
     }

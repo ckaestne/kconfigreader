@@ -142,10 +142,11 @@ object KConfigMerger extends App {
 
         out.write("p cnf " + globalVariableCounter + " " + clauses.size + "\n")
 
-        for (c <- clauses)
+        for (c <- clauses){
             for (v <- c)
                 out.write(v + " ")
-        out.write("0\n")
+	    out.write("0\n")
+	}
 
 
         out.close

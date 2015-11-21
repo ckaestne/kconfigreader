@@ -1,0 +1,3 @@
+config VAR
+    def_bool n
+    def_bool y

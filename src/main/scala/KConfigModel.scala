@@ -709,6 +709,9 @@ case class Choice(val name: String) {
         //children can only select "m" if entire choice is "m"
         if (isTristate)
             result ++= items.filter(_.isTristate).map(_.fexpr_m implies this.fexpr_m)
+        //if the choice is boolean, tristate items can still only be selected as y or n, not as m
+        if (!isTristate)
+            result ++= items.filter(_.isTristate).map(_.fexpr_m.not)
         //all options (with prompts) are mutually exclusive in "y" setting (not in "m")
         result ++=
             (for (a <- promptItems.tails.take(promptItems.size); b <- a.tail) yield (a.head.fexpr_y mex b.fexpr_y))

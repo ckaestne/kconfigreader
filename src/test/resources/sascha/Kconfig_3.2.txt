@@ -7,3 +7,4 @@ config UNNAMED_VAR
     
 config TRISTATE_VAR
     tristate "A tristate variable"
+

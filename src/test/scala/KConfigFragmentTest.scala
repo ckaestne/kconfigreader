@@ -3,9 +3,9 @@ package de.fosd.typechef.kconfig
 import org.junit._
 
 /**
- * brute force tests with many small handwritten kconfig files
- *
- */
+  * brute force tests with many small handwritten kconfig files
+  *
+  */
 class KConfigFragmentTest extends DifferentialTesting {
 
     @Test def testMini() {
@@ -23,6 +23,7 @@ class KConfigFragmentTest extends DifferentialTesting {
     @Test def testDep() {
         checkTestModelBruteForce("src/test/resources/dep.config")
     }
+
     @Test def testDep2() {
         checkTestModelBruteForce("src/test/resources/dep2.config")
     }
@@ -202,12 +203,15 @@ class KConfigFragmentTest extends DifferentialTesting {
     @Test def testChoiceDep() {
         checkTestModelBruteForce("src/test/resources/choicedep.config")
     }
+
     @Test def testChoiceDep2() {
         checkTestModelBruteForce("src/test/resources/choicedep2.config")
     }
+
     @Test def testDepHidden() {
         checkTestModelBruteForce("src/test/resources/dephidden.config")
     }
+
     @Test def testChoiceTriDep() {
         checkTestModelBruteForce("src/test/resources/choicetridep.config")
     }
@@ -219,9 +223,11 @@ class KConfigFragmentTest extends DifferentialTesting {
     @Test def testUndef() {
         checkTestModelBruteForce("src/test/resources/undef.config")
     }
+
     @Test def testTriBool() {
         checkTestModelBruteForce("src/test/resources/tribool.config")
     }
+
     @Test def testUndefSelect() {
         checkTestModelBruteForce("src/test/resources/undefselect.config")
     }
@@ -230,6 +236,7 @@ class KConfigFragmentTest extends DifferentialTesting {
     @Test def testTriBool2() {
         checkTestModelBruteForce("src/test/resources/tribool2.config")
     }
+
     @Test def testChoiceNamed() {
         checkTestModelBruteForce("src/test/resources/choicenamed.config")
     }
@@ -237,24 +244,31 @@ class KConfigFragmentTest extends DifferentialTesting {
     @Test def testNoChoice() {
         checkTestModelBruteForce("src/test/resources/nochoice.config")
     }
+
     @Test def testChoiceTriDefault() {
         checkTestModelBruteForce("src/test/resources/choicetridefault.config")
     }
+
     @Test def testChoiceDefault() {
         checkTestModelBruteForce("src/test/resources/choicedefault.config")
     }
+
     @Test def testSelectOverDepends() {
         checkTestModelBruteForce("src/test/resources/selectoverdepends.config")
     }
+
     @Test def testSelectOverDepends2() {
         checkTestModelBruteForce("src/test/resources/selectoverdepends2.config")
     }
+
     @Test def testTriHiddenSelect() {
         checkTestModelBruteForce("src/test/resources/trihiddenselect.config")
     }
+
     @Test def testPageGuard() {
         checkTestModelBruteForce("src/test/resources/pageguard.config")
     }
+
     @Test def testTriMenuVisible() {
         checkTestModelBruteForce("src/test/resources/trimenuvisible.config")
     }

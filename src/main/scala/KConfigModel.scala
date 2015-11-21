@@ -339,6 +339,14 @@ case class Item(val id: Int, model: KConfigModel) {
         this.selectedBy = (item, condition) :: this.selectedBy
     }
 
+    /**
+      * if an item is inside a choice select clauses do not seem to have an
+      * effect (see test Kconfig_3.5). Therefore, we simply discard them here
+      */
+    def selectedByOutsideChoice = if (isChoiceItem()) Nil else selectedBy
+
+    def isChoiceItem() =
+        model.choices.values.exists(_.items.contains(this))
 
     def addRange(lower: Symbol, upper: Symbol, condition: Expr) = {
         val newCondition = And(condition, Not(ranges.map(_._3).foldRight[Expr](Not(YTrue()))(Or(_, _))))
@@ -372,9 +380,9 @@ case class Item(val id: Int, model: KConfigModel) {
 
         //selected by any select-dependencies
         // => (dep1 | dep2 | ... | depn) -> this
-        val selectedBy_y = selectedBy.map(sel => sel._1.fexpr_y and sel._2.fexpr_y).foldLeft(False)(_ or _)
-        val selectedBy_both = selectedBy.map(sel => sel._1.fexpr_both and sel._2.fexpr_both).foldLeft(False)(_ or _)
-        if (!selectedBy.isEmpty) {
+        var selectedBy_y = selectedByOutsideChoice.map(sel => sel._1.fexpr_y and sel._2.fexpr_y).foldLeft(False)(_ or _)
+        var selectedBy_both = selectedByOutsideChoice.map(sel => sel._1.fexpr_both and sel._2.fexpr_both).foldLeft(False)(_ or _)
+        if (!selectedByOutsideChoice.isEmpty) {
             result ::= (selectedBy_y implies this.fexpr_y)
             result ::= (selectedBy_both implies this.fexpr_both)
         }
@@ -411,16 +419,16 @@ case class Item(val id: Int, model: KConfigModel) {
             //if invisible and off by default, then can only be activated by selects
             // notDefault -> !this | dep1 | dep2 | ... | depn
             if (isTristate) {
-                result ::= nopromptCond implies (MODULES implies (default_y.not implies selectedBy.foldLeft(this.fexpr_y.not)((expr, sel) => (sel._1.fexpr_y and sel._2.fexpr_y) or expr)))
-                result ::= nopromptCond implies (MODULES implies (default_m.not implies selectedBy.foldLeft(this.fexpr_m.not)((expr, sel) => (sel._1.fexpr_both and sel._2.fexpr_both) or expr)))
-                result ::= nopromptCond implies (MODULES.not implies (default_both.not implies selectedBy.foldLeft(this.fexpr_y.not)((expr, sel) => (sel._1.fexpr_both and sel._2.fexpr_both) or expr)))
+                result ::= nopromptCond implies (MODULES implies (default_y.not implies selectedByOutsideChoice.foldLeft(this.fexpr_y.not)((expr, sel) => (sel._1.fexpr_y and sel._2.fexpr_y) or expr)))
+                result ::= nopromptCond implies (MODULES implies (default_m.not implies selectedByOutsideChoice.foldLeft(this.fexpr_m.not)((expr, sel) => (sel._1.fexpr_both and sel._2.fexpr_both) or expr)))
+                result ::= nopromptCond implies (MODULES.not implies (default_both.not implies selectedByOutsideChoice.foldLeft(this.fexpr_y.not)((expr, sel) => (sel._1.fexpr_both and sel._2.fexpr_both) or expr)))
             } else if (!isNonBoolean) {
                 //if _type == boolean
-                result ::= nopromptCond implies ((default_both.not implies selectedBy.foldLeft(this.fexpr_y.not)((expr, sel) => (sel._1.fexpr_both and sel._2.fexpr_both) or expr)))
+                result ::= nopromptCond implies ((default_both.not implies selectedByOutsideChoice.foldLeft(this.fexpr_y.not)((expr, sel) => (sel._1.fexpr_both and sel._2.fexpr_both) or expr)))
             } else {
                 //if nonboolean
                 val default_any = defaults.map(_._2).foldLeft(False)(_ or _)
-                result ::= nopromptCond implies ((default_any.not implies selectedBy.foldLeft(this.fexpr_nonboolean.not)((expr, sel) => (sel._1.fexpr_both and sel._2.fexpr_both) or expr)))
+                result ::= nopromptCond implies ((default_any.not implies selectedByOutsideChoice.foldLeft(this.fexpr_nonboolean.not)((expr, sel) => (sel._1.fexpr_both and sel._2.fexpr_both) or expr)))
             }
 
             //if invisible and on by default, then can only be deactivated by dependencies (== default conditions)

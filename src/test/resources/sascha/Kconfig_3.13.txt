@@ -7,4 +7,5 @@ choice
         
     config BOOL_VAL2
         bool "2nd Boolean Value"
- endchoice
+endchoice
+

@@ -7,3 +7,4 @@ config VAR1
     
 config VAR2
     def_tristate m
+

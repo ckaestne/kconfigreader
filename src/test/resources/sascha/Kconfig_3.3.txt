@@ -8,3 +8,4 @@ config VAR1
 config VAR2
     bool "Selected variable"
     depends on CONST_FALSE
+

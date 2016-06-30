@@ -10,3 +10,4 @@ choice
         bool "A sub value"
         depends on VAL_1
 endchoice
+

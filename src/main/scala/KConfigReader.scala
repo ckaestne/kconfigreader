@@ -151,8 +151,10 @@ object KConfigReader extends App {
     else
         s.asInstanceOf[SATFeatureExpr] match {
             case de.fosd.typechef.featureexpr.sat.DefinedExpr(s) =>
-                assert(!(s.feature contains "="), s"feature name $s may not contain '='")
-                "defined(CONFIG_%s)".format(s.feature)
+                if (s.feature contains "=")
+                    "(CONFIG_%s==%s)".format(s.feature.split("=")(0), s.feature.split("=")(1))
+                else
+                    "defined(CONFIG_%s)".format(s.feature)
             case de.fosd.typechef.featureexpr.sat.And(clauses) =>
                 clauses.map(formatExpr).mkString("(", " && ", ")")
             case de.fosd.typechef.featureexpr.sat.Or(clauses) =>

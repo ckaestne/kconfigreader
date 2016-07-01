@@ -127,9 +127,9 @@ object KConfigReader extends App {
         val writer = new FileWriter(outputfile)
         for (item <- model.items.values.toList.sortBy(_.name)) {
             if (!item.isNonBoolean)
-                writer.write(item.name+"\n")
+                writer.write("CONFIG_"+item.name+"\n")
             if (item.isTristate)
-                writer.write(item.modulename+"\n")
+                writer.write("CONFIG_"+item.modulename+"\n")
         }
         writer.close()
     }

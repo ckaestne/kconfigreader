@@ -64,6 +64,7 @@ object KConfigReader extends App {
     val kconfigFile = new File(kconfigPath)
     val rsfFile = new File(out + ".rsf")
     val modelFile = new File(out + ".model")
+    val featuresFile = new File(out + ".features")
     val dimacsFile = new File(out + ".dimacs")
     val nonboolFile = new File(out + ".nonbool.h")
     val completedConfFile = new File(out + ".completed.h")
@@ -96,6 +97,7 @@ object KConfigReader extends App {
 
     println("writing model")
     writeModel(modelFile, model)
+    writeFeatures(featuresFile, model)
 
     if (options contains "writeNonBoolean") {
         println("writing nonboolean")
@@ -121,6 +123,16 @@ object KConfigReader extends App {
     println("done.")
 
 
+    def writeFeatures(outputfile: File, model: KConfigModel): Unit = {
+        val writer = new FileWriter(outputfile)
+        for (item <- model.items.values.toList.sortBy(_.name)) {
+            if (!item.isNonBoolean)
+                writer.write(item.name+"\n")
+            if (item.isTristate)
+                writer.write(item.modulename+"\n")
+        }
+        writer.close()
+    }
     def writeModel(outputfile: File, model: KConfigModel) {
         val writer = new FileWriter(outputfile)
         var fexpr: FeatureExpr = True
